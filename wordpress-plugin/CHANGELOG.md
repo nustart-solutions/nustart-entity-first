@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0] - 2026-01-18
+
+### Fixed
+- Fixed duplicate entity output in schema graph when entity appears in both `primary_entity_id` and `about_entity_ids`
+- Schema generator now tracks added entities and skips duplicates
+
+### Enhanced
+- Enhanced `create_entity.py` to support additional social media platforms:
+  - Instagram (`--instagram`)
+  - GitHub (`--github`)
+  - Reddit (`--reddit`)
+  - Google Maps (`--google-maps`)
+  - Generic URLs via `--same-as` (comma-separated)
+- Enhanced `manage_entity_direct.py` with same social media platform support
+
+### Changed
+- Removed hardcoded social profiles from plugin seed data
+- Entities now managed exclusively via REST API for better flexibility
+
 ## [1.1.0] - 2026-01-17
 
 ### Added

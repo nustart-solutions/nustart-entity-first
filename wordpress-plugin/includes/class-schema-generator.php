@@ -32,31 +32,41 @@ class NS_Schema_Generator
             return null;
 
         $graph = [];
+        $added_entities = []; // Track which entities we've already added
 
         // Add primary entity
         if ($page['primary_entity_id']) {
             $primary_schema = $this->entity_model->to_schema($page['primary_entity_id']);
             if ($primary_schema) {
                 $graph[] = $primary_schema;
+                $added_entities[] = $page['primary_entity_id']; // Mark as added
             }
         }
 
-        // Add about entities
+        // Add about entities (skip if already added)
         if (!empty($page['about_entity_ids'])) {
             foreach ($page['about_entity_ids'] as $entity_id) {
+                if (in_array($entity_id, $added_entities)) {
+                    continue; // Skip duplicates
+                }
                 $schema = $this->entity_model->to_schema($entity_id);
                 if ($schema) {
                     $graph[] = $schema;
+                    $added_entities[] = $entity_id;
                 }
             }
         }
 
-        // Add mentioned entities
+        // Add mentioned entities (skip if already added)
         if (!empty($page['mentions_entity_ids'])) {
             foreach ($page['mentions_entity_ids'] as $entity_id) {
+                if (in_array($entity_id, $added_entities)) {
+                    continue; // Skip duplicates
+                }
                 $schema = $this->entity_model->to_schema($entity_id);
                 if ($schema) {
                     $graph[] = $schema;
+                    $added_entities[] = $entity_id;
                 }
             }
         }

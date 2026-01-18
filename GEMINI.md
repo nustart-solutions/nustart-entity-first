@@ -39,6 +39,16 @@ Before writing a script, check `execution/` per your directive. Only create new 
 **3. Update directives as you learn**
 Directives are living documents. When you discover API constraints, better approaches, common errors, or timing expectations—update the directive. But don't create or overwrite directives without asking unless explicitly told to. Directives are your instruction set and must be preserved (and improved upon over time, not extemporaneously used and then discarded).
 
+**4. WordPress Plugin Versioning**
+Every change to the WordPress plugin requires:
+- Increment version number in `wordpress-plugin/nustart-entity-seo.php` (header and `NS_ENTITY_VERSION` constant)
+- Add entry to `wordpress-plugin/CHANGELOG.md` with date, version, and changes
+- Use semantic versioning: MAJOR.MINOR.PATCH (e.g., 1.2.0)
+  - MAJOR: Breaking changes
+  - MINOR: New features, enhancements
+  - PATCH: Bug fixes
+- Deploy updated plugin using `execution/deploy_plugin.py`
+
 ## Self-annealing loop
 
 Errors are learning opportunities. When something breaks:

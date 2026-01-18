@@ -77,12 +77,26 @@ def create_entity(args):
     
     # Build sameAs array
     same_as = []
-    if args.twitter:
-        same_as.append(args.twitter)
     if args.linkedin:
         same_as.append(args.linkedin)
+    if args.twitter:
+        same_as.append(args.twitter)
     if args.facebook:
         same_as.append(args.facebook)
+    if args.instagram:
+        same_as.append(args.instagram)
+    if args.github:
+        same_as.append(args.github)
+    if args.reddit:
+        same_as.append(args.reddit)
+    if args.google_maps:
+        same_as.append(args.google_maps)
+    if args.same_as:
+        # Support multiple URLs via comma-separated list
+        for url in args.same_as.split(','):
+            url = url.strip()
+            if url:
+                same_as.append(url)
     
     if same_as:
         entity_data['same_as'] = same_as
@@ -156,9 +170,14 @@ if __name__ == '__main__':
     parser.add_argument('--image', help='Image URL')
     
     # Social profiles
-    parser.add_argument('--twitter', help='Twitter URL')
     parser.add_argument('--linkedin', help='LinkedIn URL')
+    parser.add_argument('--twitter', help='Twitter/X URL')
     parser.add_argument('--facebook', help='Facebook URL')
+    parser.add_argument('--instagram', help='Instagram URL')
+    parser.add_argument('--github', help='GitHub URL')
+    parser.add_argument('--reddit', help='Reddit URL')
+    parser.add_argument('--google-maps', help='Google Maps URL')
+    parser.add_argument('--same-as', help='Additional sameAs URLs (comma-separated)')
     
     args = parser.parse_args()
     
