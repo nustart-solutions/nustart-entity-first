@@ -71,6 +71,21 @@ def create_entity(args):
         properties['logo'] = {'@type': 'ImageObject', 'url': args.logo}
     if args.image:
         properties['image'] = args.image
+    if args.knows_about:
+        # Support comma-separated list
+        properties['knowsAbout'] = [k.strip() for k in args.knows_about.split(',')]
+    if args.works_for:
+        # Reference to parent organization
+        properties['worksFor'] = {'@id': args.works_for}
+    
+    # Add custom JSON properties if provided
+    if args.properties:
+        try:
+            custom_props = json.loads(args.properties)
+            properties.update(custom_props)
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] Invalid JSON in --properties: {e}")
+            return False
     
     if properties:
         entity_data['properties'] = properties
@@ -178,6 +193,13 @@ if __name__ == '__main__':
     parser.add_argument('--reddit', help='Reddit URL')
     parser.add_argument('--google-maps', help='Google Maps URL')
     parser.add_argument('--same-as', help='Additional sameAs URLs (comma-separated)')
+    
+    # Person-specific properties
+    parser.add_argument('--knows-about', help='Topics of expertise (comma-separated)')
+    parser.add_argument('--works-for', help='Organization @id reference (e.g., https://nustart.solutions/#org-nustart)')
+    
+    # Custom JSON properties for complex schemas
+    parser.add_argument('--properties', help='Additional properties as JSON string (e.g., \'{"areaServed": [...]}\')')
     
     args = parser.parse_args()
     

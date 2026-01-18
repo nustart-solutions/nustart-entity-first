@@ -76,6 +76,33 @@ def map_url_to_entity(args):
     if args.description:
         mapping_data['meta_description_override'] = args.description
     
+    # Auto-lookup wp_post_id for blog posts
+    if args.page_type == 'BlogPosting':
+        print(f"[INFO] Looking up wp_post_id for BlogPosting...")
+        slug = args.url.rstrip('/').split('/')[-1]
+        posts_endpoint = f"{wp_url.rstrip('/')}/wp/v2/posts"
+        
+        try:
+            posts_response = requests.get(
+                f"{posts_endpoint}?slug={slug}",
+                auth=HTTPBasicAuth(wp_user, wp_password)
+            )
+            
+            if posts_response.status_code == 200:
+                posts = posts_response.json()
+                if posts and len(posts) > 0:
+                    post_id = posts[0]['id']
+                    mapping_data['wp_post_id'] = post_id
+                    print(f"[OK] Found wp_post_id: {post_id}")
+                else:
+                    print(f"[WARNING] No post found with slug: {slug}")
+                    print(f"[WARNING] BlogPosting schema may not generate correctly")
+            else:
+                print(f"[WARNING] Failed to lookup post: {posts_response.status_code}")
+        except Exception as e:
+            print(f"[WARNING] Error looking up post ID: {e}")
+
+    
     try:
         # Make API request
         api_endpoint = f"{wp_url.rstrip('/')}/nustart-entity/v1/page-mappings"

@@ -2,8 +2,8 @@
 /**
  * Plugin Name: NuStart Entity-First SEO
  * Plugin URI: https://nustart.solutions
- * Description: Entity-first SEO implementation with knowledge layer (ns_entities) and page layer (ns_page_entity_map) for proper schema.org markup
- * Version: 1.2.0
+ * Description: Entity-first SEO system with schema.org markup generation
+ * Version: 1.3.1
  * Author: NuStart Solutions
  * Author URI: https://nustart.solutions
  * License: GPL v2 or later
@@ -16,9 +16,15 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('NS_ENTITY_VERSION', '1.2.0');
-define('NS_ENTITY_PATH', plugin_dir_path(__FILE__));
-define('NS_ENTITY_URL', plugin_dir_url(__FILE__));
+if (!defined('NS_ENTITY_VERSION')) {
+    define('NS_ENTITY_VERSION', '1.3.1');
+}
+if (!defined('NS_ENTITY_PATH')) {
+    define('NS_ENTITY_PATH', plugin_dir_path(__FILE__));
+}
+if (!defined('NS_ENTITY_URL')) {
+    define('NS_ENTITY_URL', plugin_dir_url(__FILE__));
+}
 
 // Require core classes
 require_once NS_ENTITY_PATH . 'includes/class-entity-model.php';
