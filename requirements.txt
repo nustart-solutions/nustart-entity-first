@@ -1,0 +1,19 @@
+# Entity-First SEO Toolkit - Python Dependencies
+
+# Web scraping and HTML parsing
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+
+# Structured data extraction
+extruct>=0.16.0
+
+# Environment variables
+python-dotenv>=1.0.0
+
+# Google Cloud Natural Language API
+google-cloud-language>=2.13.0
+
+# Optional: Google Sheets export (if using --export-sheets)
+# google-api-python-client>=2.100.0
+# google-auth-httplib2>=0.1.1
+# google-auth-oauthlib>=1.1.0
