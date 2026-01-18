@@ -3,7 +3,7 @@
  * Plugin Name: NuStart Entity-First SEO
  * Plugin URI: https://nustart.solutions
  * Description: Entity-first SEO implementation with knowledge layer (ns_entities) and page layer (ns_page_entity_map) for proper schema.org markup
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: NuStart Solutions
  * Author URI: https://nustart.solutions
  * License: GPL v2 or later
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('NS_ENTITY_VERSION', '1.0.0');
+define('NS_ENTITY_VERSION', '1.1.0');
 define('NS_ENTITY_PATH', plugin_dir_path(__FILE__));
 define('NS_ENTITY_URL', plugin_dir_url(__FILE__));
 
@@ -24,6 +24,7 @@ define('NS_ENTITY_URL', plugin_dir_url(__FILE__));
 require_once NS_ENTITY_PATH . 'includes/class-entity-model.php';
 require_once NS_ENTITY_PATH . 'includes/class-page-entity-map-model.php';
 require_once NS_ENTITY_PATH . 'includes/class-schema-generator.php';
+require_once NS_ENTITY_PATH . 'includes/class-rest-api.php';
 
 /**
  * Plugin activation - create tables and seed data
@@ -100,21 +101,10 @@ function ns_entity_seed_data()
         'slug' => 'nustart-solutions',
         'canonical_url' => 'https://nustart.solutions/',
         'same_as' => [
-            'https://twitter.com/nustartsolution',
             'https://www.linkedin.com/company/nustart-solutions'
         ],
         'properties' => [
-            'description' => 'NuStart Solutions is a remote-first WordPress and AI visibility consultancy headquartered in Langley, British Columbia. We help businesses across North America build, secure, optimize, and future-proof their websites through expert WordPress support, accessibility compliance, automation, and AI-driven visibility.',
-            'logo' => [
-                '@type' => 'ImageObject',
-                'url' => 'https://nustart.solutions/wp-content/uploads/nustart-logo.png'
-            ],
-            'address' => [
-                '@type' => 'PostalAddress',
-                'addressLocality' => 'Langley',
-                'addressRegion' => 'BC',
-                'addressCountry' => 'CA'
-            ],
+            'description' => 'NuStart Solutions is a remote-first WordPress and AI visibility consultancy, headquartered in Langley, British Columbia. We help businesses across North America build, secure, optimize, and future-proof their websites — from emergency fixes to long-term optimization.',
             'areaServed' => [
                 ['@type' => 'Country', 'name' => 'Canada'],
                 ['@type' => 'Country', 'name' => 'United States']
@@ -123,19 +113,10 @@ function ns_entity_seed_data()
                 [
                     '@type' => 'ContactPoint',
                     'contactType' => 'customer support',
-                    'email' => 'info@nustart.solutions',
                     'telephone' => '+1-778-240-8737',
+                    'email' => 'info@nustart.solutions',
                     'availableLanguage' => ['en-CA', 'en-US']
                 ]
-            ],
-            'knowsAbout' => [
-                'WordPress Support',
-                'WordPress Security',
-                'ADA Compliance',
-                'WCAG Accessibility',
-                'AI Visibility',
-                'GEO Optimization',
-                'n8n Automation'
             ]
         ],
         'status' => 'published'

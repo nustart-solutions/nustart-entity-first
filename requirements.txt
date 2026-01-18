@@ -13,6 +13,9 @@ python-dotenv>=1.0.0
 # Google Cloud Natural Language API
 google-cloud-language>=2.13.0
 
+# SFTP deployment
+pysftp>=0.2.9
+
 # Optional: Google Sheets export (if using --export-sheets)
 # google-api-python-client>=2.100.0
 # google-auth-httplib2>=0.1.1
