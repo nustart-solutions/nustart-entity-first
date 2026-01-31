@@ -2,8 +2,8 @@
 /**
  * Plugin Name: NuStart Entity-First SEO
  * Plugin URI: https://nustart.solutions
- * Description: Entity-first SEO system with schema.org markup generation
- * Version: 1.3.1
+ * Description: Entity-first SEO system with schema.org markup generation (ACF + Custom Post Types)
+ * Version: 2.0.0
  * Author: NuStart Solutions
  * Author URI: https://nustart.solutions
  * License: GPL v2 or later
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 if (!defined('NS_ENTITY_VERSION')) {
-    define('NS_ENTITY_VERSION', '1.3.1');
+    define('NS_ENTITY_VERSION', '2.0.0');
 }
 if (!defined('NS_ENTITY_PATH')) {
     define('NS_ENTITY_PATH', plugin_dir_path(__FILE__));
@@ -26,7 +26,15 @@ if (!defined('NS_ENTITY_URL')) {
     define('NS_ENTITY_URL', plugin_dir_url(__FILE__));
 }
 
-// Require core classes
+// Require ACF-based classes
+require_once NS_ENTITY_PATH . 'includes/class-entity-post-type.php';
+require_once NS_ENTITY_PATH . 'includes/acf-fields/entity-core-fields.php';
+require_once NS_ENTITY_PATH . 'includes/acf-fields/entity-schema-properties.php';
+require_once NS_ENTITY_PATH . 'includes/acf-fields/page-entity-fields.php';
+require_once NS_ENTITY_PATH . 'includes/class-schema-generator-acf.php';
+require_once NS_ENTITY_PATH . 'includes/class-migration.php';
+
+// Keep old classes for backward compatibility during migration
 require_once NS_ENTITY_PATH . 'includes/class-entity-model.php';
 require_once NS_ENTITY_PATH . 'includes/class-page-entity-map-model.php';
 require_once NS_ENTITY_PATH . 'includes/class-schema-generator.php';
@@ -41,6 +49,7 @@ function ns_entity_activate()
     $prefix = $wpdb->prefix;
     $charset = $wpdb->get_charset_collate();
 
+    // Keep old tables for backward compatibility during migration
     // Table 1: ns_entities (Knowledge Layer)
     $sql_entities = "CREATE TABLE {$prefix}ns_entities (
         entity_id VARCHAR(50) PRIMARY KEY,
@@ -88,8 +97,14 @@ function ns_entity_activate()
     dbDelta($sql_entities);
     dbDelta($sql_page_map);
 
-    // Seed core entities
+    // Seed core entities (to old tables for migration)
     ns_entity_seed_data();
+
+    // Register post types and flush rewrite rules
+    $post_type = new NS_Entity_Post_Type();
+    $post_type->register_post_type();
+    $post_type->register_taxonomy();
+    flush_rewrite_rules();
 }
 register_activation_hook(__FILE__, 'ns_entity_activate');
 
@@ -166,7 +181,8 @@ function ns_entity_seed_data()
  */
 function ns_entity_output_schema()
 {
-    $generator = new NS_Schema_Generator();
+    // Use ACF-based schema generator
+    $generator = new NS_Schema_Generator_ACF();
     $generator->output_schema();
 }
 add_action('wp_head', 'ns_entity_output_schema', 1);
