@@ -1,5 +1,30 @@
 # Changelog
 
+## [2.3.0] - 2026-02-01
+
+### 🎉 Setup Wizard & Settings Page
+
+This release adds a user-friendly setup wizard and settings page for managing organization entities without requiring JSON knowledge.
+
+### Added
+- **Setup Wizard:** Automatic wizard on first activation to create organization entity
+- **Settings Page:** Settings → Entity SEO for editing organization details anytime
+- **Dual Storage:** Settings synced between WordPress options and entity post
+- **Auto-mapping:** Homepage automatically mapped to organization entity
+- **Collapsible Sections:** Address and social profiles are optional and collapsible
+- **Skip Option:** Users can skip setup and create entities manually
+
+### Changed
+- **Schema Generator:** Exclude `@context` from schema_json merge to prevent duplicates
+- **Service Provider:** Removed hardcoded `org-nustart` default for services
+
+### Benefits
+- ✅ **Zero-config setup** for basic sites
+- ✅ **No JSON knowledge required** for organization setup
+- ✅ **User-friendly forms** with clear labels and descriptions
+- ✅ **Flexible** - Can still edit JSON directly for advanced users
+- ✅ **Revisitable** - Settings can be updated anytime
+
 ## [2.2.1] - 2026-02-01
 
 ### Fixed

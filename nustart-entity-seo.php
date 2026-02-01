@@ -3,7 +3,7 @@
  * Plugin Name: NuStart Entity-First SEO
  * Plugin URI: https://nustart.solutions
  * Description: Entity-first SEO system with schema.org markup generation (ACF + Custom Post Types)
- * Version: 2.2.1
+ * Version: 2.3.0
  * Author: NuStart Solutions
  * Author URI: https://nustart.solutions
  * License: GPL v2 or later
@@ -18,7 +18,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 if (!defined('NS_ENTITY_VERSION')) {
-    define('NS_ENTITY_VERSION', '2.2.1');
+    define('NS_ENTITY_VERSION', '2.3.0');
 }
 if (!defined('NS_ENTITY_PATH')) {
     define('NS_ENTITY_PATH', plugin_dir_path(__FILE__));
@@ -33,6 +33,8 @@ require_once NS_ENTITY_PATH . 'includes/acf-fields/entity-core-fields.php';
 require_once NS_ENTITY_PATH . 'includes/acf-fields/entity-schema-properties.php';
 require_once NS_ENTITY_PATH . 'includes/acf-fields/page-entity-fields.php';
 require_once NS_ENTITY_PATH . 'includes/class-schema-generator-acf.php';
+require_once NS_ENTITY_PATH . 'includes/class-settings-page.php';
+require_once NS_ENTITY_PATH . 'includes/class-setup-wizard.php';
 
 // Initialize Plugin Update Checker
 require_once NS_ENTITY_PATH . 'vendor/yahnis-elsts/plugin-update-checker/plugin-update-checker.php';
@@ -72,6 +74,11 @@ function ns_entity_activate()
     $post_type->register_post_type();
     $post_type->register_taxonomy();
     flush_rewrite_rules();
+
+    // Set transient to trigger setup wizard on first activation
+    if (!get_option('ns_entity_setup_complete')) {
+        set_transient('ns_entity_show_setup_wizard', true, 60);
+    }
 }
 register_activation_hook(__FILE__, 'ns_entity_activate');
 
@@ -101,6 +108,18 @@ function ns_entity_acf_missing_notice()
     </div>
     <?php
 }
+
+/**
+ * Initialize settings page and setup wizard
+ */
+function ns_entity_init_admin()
+{
+    if (is_admin()) {
+        new NS_Entity_Settings_Page();
+        new NS_Entity_Setup_Wizard();
+    }
+}
+add_action('plugins_loaded', 'ns_entity_init_admin');
 
 /**
  * Output schema in <head>
