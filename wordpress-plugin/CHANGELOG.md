@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.1.0] - 2026-01-31
+
+### Changed
+- **Simplified ACF Schema Properties:** Replaced rigid flexible content layouts with single `schema_json` textarea field
+- **Maximum Flexibility:** Store complete schema.org JSON directly, no field constraints
+- **Hierarchical Relationships:** Added proper `isPartOf` and `hasOfferCatalog` support for parent/child services
+- **Auto-Generated Relationships:** Schema generator automatically adds `provider`, `worksFor`, and category based on parent entity
+
+### Added
+- **Python Helper Script:** `execution/create_service.py` for easy hierarchical service creation
+- Support for `additionalProperty` arrays in schema JSON
+- Automatic child service detection and `hasOfferCatalog` generation
+- Category field auto-populated from parent entity name
+
+### Benefits
+- ✅ Store ANY schema.org properties without code changes
+- ✅ Perfect for complex service specifications
+- ✅ Proper Knowledge Graph hierarchies (Organization → Service → Sub-Service)
+- ✅ Python scripts can write complex JSON directly
+
 ## [2.0.0] - 2026-01-31
 
 ### 🎉 Major Release: ACF + Custom Post Types Architecture

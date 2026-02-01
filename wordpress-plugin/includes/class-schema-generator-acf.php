@@ -200,13 +200,23 @@ class NS_Schema_Generator_ACF
         $entity_id = get_field('entity_id', $entity_post_id);
         $canonical_url = get_field('canonical_url', $entity_post_id);
         $same_as = get_field('same_as', $entity_post_id) ?: [];
-        $schema_properties = get_field('schema_properties', $entity_post_id) ?: [];
+        $schema_json = get_field('schema_json', $entity_post_id);
+        $parent_entity_id = get_field('parent_entity', $entity_post_id);
+
+        // Parse schema JSON
+        $schema_data = [];
+        if (!empty($schema_json)) {
+            $decoded = json_decode($schema_json, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                $schema_data = $decoded;
+            }
+        }
 
         // Build base schema
         $schema = [
-            '@type' => $entity_type,
+            '@type' => $schema_data['@type'] ?? $entity_type,
             '@id' => ($canonical_url ?: home_url()) . '#' . $entity_id,
-            'name' => $entity_post->post_title,
+            'name' => $schema_data['name'] ?? $entity_post->post_title,
             'url' => $canonical_url
         ];
 
@@ -216,90 +226,81 @@ class NS_Schema_Generator_ACF
             $schema['sameAs'] = array_filter($same_as_urls);
         }
 
-        // Merge schema properties from flexible content
-        foreach ($schema_properties as $property_group) {
-            $layout = $property_group['acf_fc_layout'];
+        // Add parent relationship (isPartOf)
+        if ($parent_entity_id) {
+            $parent_canonical = get_field('canonical_url', $parent_entity_id);
+            $parent_entity_slug = get_field('entity_id', $parent_entity_id);
+            $schema['isPartOf'] = [
+                '@id' => ($parent_canonical ?: home_url()) . '#' . $parent_entity_slug
+            ];
 
-            switch ($layout) {
-                case 'organization_properties':
-                    if (!empty($property_group['description'])) {
-                        $schema['description'] = $property_group['description'];
-                    }
+            // Add category from parent name
+            $parent_post = get_post($parent_entity_id);
+            if ($parent_post) {
+                $schema['category'] = $parent_post->post_title;
+            }
+        }
 
-                    // Area served
-                    if (!empty($property_group['area_served'])) {
-                        $schema['areaServed'] = [];
-                        foreach ($property_group['area_served'] as $area) {
-                            $schema['areaServed'][] = [
-                                '@type' => 'Country',
-                                'name' => $area['country_name']
-                            ];
-                        }
-                    }
+        // Merge all other properties from schema_json
+        foreach ($schema_data as $key => $value) {
+            if (!in_array($key, ['@type', '@id', 'name', 'url'])) {
+                $schema[$key] = $value;
+            }
+        }
 
-                    // Contact points
-                    if (!empty($property_group['contact_point'])) {
-                        $schema['contactPoint'] = [];
-                        foreach ($property_group['contact_point'] as $contact) {
-                            $contact_schema = [
-                                '@type' => 'ContactPoint',
-                                'contactType' => $contact['contact_type'],
-                            ];
-                            if (!empty($contact['telephone'])) {
-                                $contact_schema['telephone'] = $contact['telephone'];
-                            }
-                            if (!empty($contact['email'])) {
-                                $contact_schema['email'] = $contact['email'];
-                            }
-                            if (!empty($contact['available_language'])) {
-                                $contact_schema['availableLanguage'] = array_map('trim', explode(',', $contact['available_language']));
-                            }
-                            $schema['contactPoint'][] = $contact_schema;
-                        }
-                    }
-                    break;
+        // Handle provider relationship (for Services)
+        if (($schema['@type'] ?? '') === 'Service' && !isset($schema['provider'])) {
+            // Default to org-nustart
+            $schema['provider'] = ['@id' => home_url() . '/#org-nustart'];
+        }
 
-                case 'person_properties':
-                    if (!empty($property_group['job_title'])) {
-                        $schema['jobTitle'] = $property_group['job_title'];
-                    }
-                    if (!empty($property_group['email'])) {
-                        $schema['email'] = $property_group['email'];
-                    }
-                    if (!empty($property_group['knows_about'])) {
-                        $schema['knowsAbout'] = array_column($property_group['knows_about'], 'topic');
-                    }
+        // Handle worksFor relationship (for Persons)
+        if (($schema['@type'] ?? '') === 'Person' && $parent_entity_id && !isset($schema['worksFor'])) {
+            $parent_canonical = get_field('canonical_url', $parent_entity_id);
+            $parent_entity_slug = get_field('entity_id', $parent_entity_id);
+            $schema['worksFor'] = [
+                '@id' => ($parent_canonical ?: home_url()) . '#' . $parent_entity_slug
+            ];
+        }
 
-                    // Add worksFor if parent entity exists
-                    $parent_entity_id = get_field('parent_entity', $entity_post_id);
-                    if ($parent_entity_id) {
-                        $parent_canonical = get_field('canonical_url', $parent_entity_id);
-                        $parent_entity_slug = get_field('entity_id', $parent_entity_id);
-                        $schema['worksFor'] = [
-                            '@id' => ($parent_canonical ?: home_url()) . '#' . $parent_entity_slug
-                        ];
-                    }
-                    break;
-
-                case 'service_properties':
-                    if (!empty($property_group['description'])) {
-                        $schema['description'] = $property_group['description'];
-                    }
-                    if (!empty($property_group['service_type'])) {
-                        $schema['serviceType'] = $property_group['service_type'];
-                    }
-                    if (!empty($property_group['provider'])) {
-                        $provider_canonical = get_field('canonical_url', $property_group['provider']);
-                        $provider_entity_slug = get_field('entity_id', $property_group['provider']);
-                        $schema['provider'] = [
-                            '@id' => ($provider_canonical ?: home_url()) . '#' . $provider_entity_slug
-                        ];
-                    }
-                    break;
+        // Add hasOfferCatalog for parent services
+        if (($schema['@type'] ?? '') === 'Service') {
+            $child_services = $this->get_child_services($entity_post_id);
+            if (!empty($child_services)) {
+                $schema['hasOfferCatalog'] = [
+                    '@type' => 'OfferCatalog',
+                    'name' => $entity_post->post_title,
+                    'itemListElement' => array_map(function ($child_id) {
+                        $child_canonical = get_field('canonical_url', $child_id);
+                        $child_entity_slug = get_field('entity_id', $child_id);
+                        return ['@id' => ($child_canonical ?: home_url()) . '#' . $child_entity_slug];
+                    }, $child_services)
+                ];
             }
         }
 
         return $schema;
+    }
+
+    /**
+     * Get child services (services that have this entity as parent)
+     */
+    private function get_child_services($parent_entity_post_id)
+    {
+        $query = new WP_Query([
+            'post_type' => 'ns_entity',
+            'posts_per_page' => -1,
+            'post_status' => 'publish',
+            'meta_query' => [
+                [
+                    'key' => 'parent_entity',
+                    'value' => $parent_entity_post_id,
+                    'compare' => '='
+                ]
+            ]
+        ]);
+
+        return wp_list_pluck($query->posts, 'ID');
     }
 
     /**

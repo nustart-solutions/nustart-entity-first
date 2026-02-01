@@ -3,7 +3,7 @@
  * Plugin Name: NuStart Entity-First SEO
  * Plugin URI: https://nustart.solutions
  * Description: Entity-first SEO system with schema.org markup generation (ACF + Custom Post Types)
- * Version: 2.0.0
+ * Version: 2.1.0
  * Author: NuStart Solutions
  * Author URI: https://nustart.solutions
  * License: GPL v2 or later
@@ -17,7 +17,7 @@ if (!defined('ABSPATH')) {
 
 // Define plugin constants
 if (!defined('NS_ENTITY_VERSION')) {
-    define('NS_ENTITY_VERSION', '2.0.0');
+    define('NS_ENTITY_VERSION', '2.1.0');
 }
 if (!defined('NS_ENTITY_PATH')) {
     define('NS_ENTITY_PATH', plugin_dir_path(__FILE__));
