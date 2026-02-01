@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.3.6] - 2026-02-01
+
+### Fixed
+- **Schema generation:** Fixed "Unspecified Type" error by standardizing entity ID handling (resolves issue where ACF returns objects instead of IDs, causing parent entities to be missed)
+
 ## [2.3.5] - 2026-02-01
 
 ### Fixed

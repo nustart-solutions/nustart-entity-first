@@ -32,10 +32,24 @@ class NS_Schema_Generator_ACF
         $graph = [];
         $added_entities = []; // Track which entities we've already added
 
-        // Get page entity mappings from ACF
-        $primary_entity_id = get_field('primary_entity', $post_id);
-        $about_entity_ids = get_field('about_entities', $post_id) ?: [];
-        $mentions_entity_ids = get_field('mentions_entities', $post_id) ?: [];
+        // Helper to get ID from mixed return (Object or ID)
+        $get_id = function ($mixed) {
+            if (is_object($mixed) && isset($mixed->ID)) {
+                return $mixed->ID;
+            }
+            return is_numeric($mixed) ? (int) $mixed : null;
+        };
+
+        // Get page entity mappings from ACF and normalize to IDs
+        $primary_raw = get_field('primary_entity', $post_id);
+        $primary_entity_id = $get_id($primary_raw);
+
+        $about_raw = get_field('about_entities', $post_id) ?: [];
+        $about_entity_ids = array_filter(array_map($get_id, is_array($about_raw) ? $about_raw : []));
+
+        $mentions_raw = get_field('mentions_entities', $post_id) ?: [];
+        $mentions_entity_ids = array_filter(array_map($get_id, is_array($mentions_raw) ? $mentions_raw : []));
+
         $faq_data = get_field('faq_data', $post_id) ?: [];
 
         // Determine if this is a blog post
@@ -151,7 +165,10 @@ class NS_Schema_Generator_ACF
             ));
 
             foreach ($entities_to_check as $entity_id) {
-                $parent_entity_id = get_field('parent_entity', $entity_id);
+                // Determine existing parent logic: get field, check if object/ID
+                $parent_raw = get_field('parent_entity', $entity_id);
+                $parent_entity_id = $get_id($parent_raw);
+
                 if ($parent_entity_id && !in_array($parent_entity_id, $added_entities)) {
                     $parent_schema = $this->entity_to_schema($parent_entity_id);
                     if ($parent_schema) {
