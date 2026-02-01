@@ -1,5 +1,37 @@
 # Changelog
 
+## [2.2.0] - 2026-02-01
+
+### 🎉 Removed Legacy Infrastructure & ACF Free Compatible
+
+This release removes all legacy custom table code and makes the plugin compatible with ACF Free (no Pro license required).
+
+### Removed
+- **Legacy custom tables:** Removed `ns_entities` and `ns_page_entity_map` table creation
+- **Legacy model classes:** Deleted `NS_Entity_Model`, `NS_Page_Entity_Map_Model`, `NS_Schema_Generator`
+- **Migration system:** Removed `NS_Entity_Migration` class (no longer needed)
+- **Legacy REST API:** Removed old REST API endpoints
+- **ACF Pro dependency:** Changed repeater field to textarea for ACF Free compatibility
+
+### Changed
+- **Same As field:** Changed from repeater (ACF Pro) to textarea (ACF Free compatible)
+  - Now accepts one URL per line instead of repeater rows
+  - Schema generator updated to parse newline-separated URLs
+- **Plugin activation:** Simplified to only register post types (no table creation)
+- **Plugin header:** Added `Requires Plugins: advanced-custom-fields` for WordPress 6.5+
+
+### Added
+- **ACF dependency check:** Plugin now checks for ACF on activation and shows admin notice if missing
+- **Graceful degradation:** Schema output disabled if ACF is not available
+- **Installation link:** Admin notice includes direct link to install ACF from WordPress.org
+
+### Benefits
+- ✅ Works with **ACF Free** (no Pro license needed)
+- ✅ Cleaner codebase (removed 5 legacy files)
+- ✅ Simpler activation (no database tables)
+- ✅ Better user experience (clear ACF requirement messaging)
+- ✅ Easier maintenance (single architecture, no migration code)
+
 ## [2.1.0] - 2026-01-31
 
 ### Changed

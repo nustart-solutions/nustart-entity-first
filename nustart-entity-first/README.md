@@ -4,37 +4,33 @@ WordPress plugin implementing entity-first SEO with ACF fields and custom post t
 
 ## Requirements
 
-- **ACF Pro** (required for custom fields)
+- **Advanced Custom Fields (ACF)** - Free or Pro version
 - WordPress 5.0+
 - PHP 7.4+
 
 ## Installation
 
-1. Copy this entire `wordpress-plugin` folder to `wp-content/plugins/nustart-entity-seo/`
-2. Ensure ACF Pro is installed and activated
+1. Install and activate **Advanced Custom Fields** (free version from WordPress.org)
+2. Install this plugin (download from GitHub or upload ZIP)
 3. Activate the plugin in WordPress admin
+4. Plugin will automatically check for ACF and show admin notice if missing
 
 ## Architecture
 
-This plugin uses a **hybrid architecture** that combines:
-- **ACF + Custom Post Types** (current system) - Entities stored as `ns_entity` posts with ACF fields
-- **Legacy Custom Tables** (backward compatibility) - `ns_entities` and `ns_page_entity_map` tables maintained during migration
+This plugin uses **ACF + Custom Post Types** for entity management:
 
-### Current System (ACF-based)
-
-Entities are stored as WordPress posts (`ns_entity` post type) with:
+- **Custom Post Type**: `ns_entity` - Entities stored as WordPress posts
 - **Taxonomy**: `ns_entity_type` (Organization, Person, Service, Place, etc.)
 - **ACF Fields**: Core metadata and schema properties stored in flexible JSON format
+- **ACF Free Compatible**: Uses simple field types (text, textarea, relationship)
 
 ## What It Does
 
 ### On Activation:
-- Creates legacy tables (`ns_entities`, `ns_page_entity_map`) for backward compatibility
+- Checks for ACF dependency
 - Registers `ns_entity` custom post type
 - Registers `ns_entity_type` taxonomy with default terms
-- Seeds "NuStart Solutions" organization entity (to legacy table)
-- Seeds "Anne Allen" person entity (to legacy table)
-- Maps homepage to organization entity
+- Flushes rewrite rules
 
 ### On Every Page Load:
 - Outputs proper JSON-LD schema in `<head>`
@@ -47,7 +43,7 @@ Entities are stored as WordPress posts (`ns_entity` post type) with:
 - **Entity ID** - Unique identifier (e.g., `org-nustart`, `person-anne`)
 - **Status** - Published or Draft
 - **Canonical URL** - Primary URL for this entity
-- **Same As** - External profile URLs (LinkedIn, Twitter, etc.)
+- **Same As** - External profile URLs (one per line: LinkedIn, Twitter, etc.)
 - **Parent Entity** - Relationship field linking to parent entity
 
 ### Schema Properties (JSON)
@@ -138,54 +134,15 @@ response = requests.post(
 )
 ```
 
-### Legacy API (Backward Compatibility)
+## Getting Started
 
-The old table-based models still work:
+After installation, create your first entity:
 
-```php
-$entity_model = new NS_Entity_Model();
-$entity_model->upsert('service-wordpress-emergency', [
-    'entity_type' => 'Service',
-    'name' => 'WordPress Emergency Support',
-    'properties' => ['description' => '...'],
-    'status' => 'published'
-]);
-```
-
-## Migration from Legacy Tables
-
-A migration tool is included to move data from custom tables to ACF + Custom Post Types.
-
-### Via WordPress Admin
-
-1. Go to **Entities → Migrate Data**
-2. Review migration statistics
-3. Run **Dry Run** to preview changes
-4. Uncheck "Dry Run" and click **Run Migration**
-
-### Via WP-CLI
-
-```bash
-# Dry run (preview only)
-wp nustart-entity migrate --dry-run
-
-# Live migration
-wp nustart-entity migrate
-
-# Verify migration
-wp nustart-entity verify
-```
-
-The migration:
-- Creates `ns_entity` posts from `ns_entities` table rows
-- Converts JSON properties to ACF `schema_json` field
-- Links parent-child relationships
-- Maps page entity associations to ACF fields on posts/pages
-
-## Current Entities Seeded
-
-1. **org-nustart** - NuStart Solutions (Organization)
-2. **person-anne** - Anne Allen (Person)
+1. Go to **Entities → Add New Entity**
+2. Set the title and entity type
+3. Fill in core fields (entity_id, canonical_url)
+4. Add schema.org JSON properties
+5. Publish
 
 ## Schema Output
 
@@ -223,19 +180,13 @@ Example output on homepage:
 ### Core Files
 - `nustart-entity-seo.php` - Main plugin file, activation hooks
 
-### ACF-Based System (Current)
+### Plugin Files
 - `includes/class-entity-post-type.php` - Registers `ns_entity` post type and taxonomy
 - `includes/acf-fields/entity-core-fields.php` - Core ACF fields (entity_id, status, etc.)
 - `includes/acf-fields/entity-schema-properties.php` - Schema JSON field
 - `includes/acf-fields/page-entity-fields.php` - Page-level entity mapping fields
 - `includes/class-schema-generator-acf.php` - Schema output from ACF data
-- `includes/class-migration.php` - Migration tool from legacy tables
-
-### Legacy System (Backward Compatibility)
-- `includes/class-entity-model.php` - Entity CRUD for `ns_entities` table
-- `includes/class-page-entity-map-model.php` - Page mapping CRUD
-- `includes/class-schema-generator.php` - Legacy schema generator
-- `includes/class-rest-api.php` - Custom REST endpoints for legacy tables
+- `vendor/yahnis-elsts/plugin-update-checker/` - GitHub update checker library
 
 ## Versioning
 
@@ -244,10 +195,18 @@ Every plugin change requires:
 2. Add entry to `CHANGELOG.md` with date, version, and changes
 3. Use semantic versioning: MAJOR.MINOR.PATCH
 
+## Updates
+
+This plugin automatically checks for updates from GitHub. When a new version is released:
+
+1. WordPress will show an update notification
+2. Click "Update Now" to install the latest version
+3. Updates are delivered directly from the public GitHub repository
+
 ## Next Steps
 
-1. Install and activate (ensure ACF Pro is active)
-2. Run migration if you have legacy table data
-3. Create entities via WordPress admin or REST API
+1. Install and activate (ensure ACF is active)
+2. Create entities via WordPress admin or REST API
+3. Map entities to pages using ACF fields
 4. Check page source for JSON-LD schema output
 5. Test with [Google Rich Results Test](https://search.google.com/test/rich-results)
