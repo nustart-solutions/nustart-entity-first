@@ -33,7 +33,7 @@ def deploy_plugin():
         return False
     
     # Local plugin path
-    local_plugin_path = Path(__file__).parent.parent / 'wordpress-plugin'
+    local_plugin_path = Path(__file__).parent.parent / 'nustart-entity-first'
     
     if not local_plugin_path.exists():
         print(f"[ERROR] Plugin directory not found: {local_plugin_path}")
