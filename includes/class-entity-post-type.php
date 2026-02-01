@@ -33,16 +33,16 @@ class NS_Entity_Post_Type
 
         $args = [
             'labels' => $labels,
-            'public' => true,
-            'publicly_queryable' => true,
-            'show_ui' => true,
-            'show_in_menu' => true,
-            'show_in_rest' => true, // Enable Gutenberg and REST API
+            'public' => false, // Not publicly accessible on frontend
+            'publicly_queryable' => false, // No frontend URLs
+            'show_ui' => true, // Show in admin
+            'show_in_menu' => true, // Show in admin menu
+            'show_in_rest' => true, // Enable REST API for programmatic access
             'rest_base' => 'ns_entity',
-            'query_var' => true,
-            'rewrite' => ['slug' => 'entity'],
+            'query_var' => false, // No query var needed
+            'rewrite' => false, // No URL rewriting
             'capability_type' => 'post',
-            'has_archive' => true,
+            'has_archive' => false, // No archive page
             'hierarchical' => false,
             'menu_position' => 20,
             'menu_icon' => 'dashicons-networking',
@@ -75,12 +75,12 @@ class NS_Entity_Post_Type
         $args = [
             'labels' => $labels,
             'hierarchical' => true,
-            'public' => true,
-            'show_ui' => true,
+            'public' => false, // Not publicly accessible
+            'show_ui' => true, // Show in admin
             'show_admin_column' => true,
-            'show_in_rest' => true,
-            'query_var' => true,
-            'rewrite' => ['slug' => 'entity-type'],
+            'show_in_rest' => true, // Enable REST API
+            'query_var' => false,
+            'rewrite' => false, // No URL rewriting
         ];
 
         register_taxonomy('ns_entity_type', 'ns_entity', $args);
