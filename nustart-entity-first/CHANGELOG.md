@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.3.3] - 2026-02-01
+
+### Fixed
+- **Parent entity inclusion:** Child service pages now automatically include parent service entities in the schema graph when referenced via `isPartOf`, resolving "Unspecified Type" validation errors
+
 ## [2.3.2] - 2026-02-01
 
 ### Fixed
