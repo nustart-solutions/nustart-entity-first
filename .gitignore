@@ -1,0 +1,7 @@
+# Composer dependencies
+/vendor/
+
+# WordPress
+.DS_Store
+Thumbs.db
+*.log
