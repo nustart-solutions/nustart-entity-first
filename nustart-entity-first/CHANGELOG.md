@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.3.1] - 2026-02-01
+
+### Fixed
+- **Entity posts no longer publicly accessible:** Changed post type to `public => false` and `publicly_queryable => false`
+- Entity URLs like `/entity/service-name/` now return 404
+- Entities remain accessible in admin and via REST API for schema generation
+- Entity taxonomy also made non-public
+
 ## [2.3.0] - 2026-02-01
 
 ### 🎉 Setup Wizard & Settings Page
