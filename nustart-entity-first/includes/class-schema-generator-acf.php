@@ -143,28 +143,62 @@ class NS_Schema_Generator_ACF
 
         // Add WebSite entity (if homepage)
         if (is_front_page()) {
-            $graph[] = [
+            // Get publisher reference from primary entity
+            $publisher_ref = null;
+            if ($primary_entity_id) {
+                $entity_id = get_field('entity_id', $primary_entity_id);
+                $canonical_url = get_field('canonical_url', $primary_entity_id);
+
+                if (!empty($entity_id)) {
+                    $publisher_ref = ['@id' => ($canonical_url ?: home_url()) . '#' . $entity_id];
+                }
+            }
+
+            $website_schema = [
                 '@type' => 'WebSite',
                 '@id' => home_url() . '#website',
                 'url' => home_url(),
-                'name' => get_bloginfo('name'),
-                'publisher' => ['@id' => home_url() . '#org-nustart']
+                'name' => get_bloginfo('name')
             ];
+
+            // Only add publisher if we have a valid reference
+            if ($publisher_ref) {
+                $website_schema['publisher'] = $publisher_ref;
+            }
+
+            $graph[] = $website_schema;
         }
 
         // Add WebPage entity (skip for blog posts)
         if (!$is_blog_post) {
             $seo_overrides = get_field('seo_overrides', $post_id);
-            $graph[] = [
+
+            // Build about reference only if primary entity has valid entity_id
+            $about_ref = null;
+            if ($primary_entity_id) {
+                $entity_id = get_field('entity_id', $primary_entity_id);
+                $canonical_url = get_field('canonical_url', $primary_entity_id);
+
+                if (!empty($entity_id)) {
+                    $about_ref = ['@id' => ($canonical_url ?: home_url()) . '#' . $entity_id];
+                }
+            }
+
+            $webpage_schema = [
                 '@type' => 'WebPage',
                 '@id' => get_permalink($post_id) . '#webpage',
                 'url' => get_permalink($post_id),
                 'name' => $seo_overrides['title_override'] ?? wp_get_document_title(),
                 'description' => $seo_overrides['meta_description_override'] ?? '',
-                'isPartOf' => ['@id' => home_url() . '#website'],
-                'about' => $primary_entity_id ?
-                    ['@id' => home_url() . '#' . get_field('entity_id', $primary_entity_id)] : null
+                'isPartOf' => ['@id' => home_url() . '#website']
             ];
+
+            // Only add about if we have a valid reference
+            if ($about_ref) {
+                $webpage_schema['about'] = $about_ref;
+            }
+
+            $graph[] = $webpage_schema;
         }
 
         // Add FAQPage if FAQ data exists
@@ -222,19 +256,37 @@ class NS_Schema_Generator_ACF
 
         // Add sameAs (parse from textarea - one URL per line)
         if (!empty($same_as)) {
-            $same_as_urls = array_filter(array_map('trim', explode("\n", $same_as)));
+            // Handle both string (textarea) and array formats
+            if (is_string($same_as)) {
+                $same_as_urls = array_filter(array_map('trim', explode("\n", $same_as)));
+            } elseif (is_array($same_as)) {
+                $same_as_urls = array_map('trim', $same_as);
+            } else {
+                $same_as_urls = [];
+            }
+
+            // Filter out non-URLs (like post IDs)
+            $same_as_urls = array_filter($same_as_urls, function ($url) {
+                return filter_var($url, FILTER_VALIDATE_URL);
+            });
+
             if (!empty($same_as_urls)) {
-                $schema['sameAs'] = $same_as_urls;
+                $schema['sameAs'] = array_values($same_as_urls);
             }
         }
 
-        // Add parent relationship (isPartOf)
-        if ($parent_entity_id) {
+        // Add parent relationship (isPartOf) - only for Service entities
+        // Person entities use worksFor instead
+        if ($parent_entity_id && ($schema['@type'] ?? '') === 'Service') {
             $parent_canonical = get_field('canonical_url', $parent_entity_id);
             $parent_entity_slug = get_field('entity_id', $parent_entity_id);
-            $schema['isPartOf'] = [
-                '@id' => ($parent_canonical ?: home_url()) . '#' . $parent_entity_slug
-            ];
+
+            // Only add if parent has valid entity_id
+            if (!empty($parent_entity_slug)) {
+                $schema['isPartOf'] = [
+                    '@id' => ($parent_canonical ?: home_url()) . '#' . $parent_entity_slug
+                ];
+            }
 
             // Add category from parent name
             $parent_post = get_post($parent_entity_id);
@@ -258,24 +310,37 @@ class NS_Schema_Generator_ACF
         if (($schema['@type'] ?? '') === 'Person' && $parent_entity_id && !isset($schema['worksFor'])) {
             $parent_canonical = get_field('canonical_url', $parent_entity_id);
             $parent_entity_slug = get_field('entity_id', $parent_entity_id);
-            $schema['worksFor'] = [
-                '@id' => ($parent_canonical ?: home_url()) . '#' . $parent_entity_slug
-            ];
+
+            // Only add if parent has valid entity_id
+            if (!empty($parent_entity_slug)) {
+                $schema['worksFor'] = [
+                    '@id' => ($parent_canonical ?: home_url()) . '#' . $parent_entity_slug
+                ];
+            }
         }
 
         // Add hasOfferCatalog for parent services
         if (($schema['@type'] ?? '') === 'Service') {
             $child_services = $this->get_child_services($entity_post_id);
             if (!empty($child_services)) {
-                $schema['hasOfferCatalog'] = [
-                    '@type' => 'OfferCatalog',
-                    'name' => $entity_post->post_title,
-                    'itemListElement' => array_map(function ($child_id) {
-                        $child_canonical = get_field('canonical_url', $child_id);
-                        $child_entity_slug = get_field('entity_id', $child_id);
+                // Filter out children without valid entity_id
+                $valid_children = array_filter(array_map(function ($child_id) {
+                    $child_canonical = get_field('canonical_url', $child_id);
+                    $child_entity_slug = get_field('entity_id', $child_id);
+
+                    if (!empty($child_entity_slug)) {
                         return ['@id' => ($child_canonical ?: home_url()) . '#' . $child_entity_slug];
-                    }, $child_services)
-                ];
+                    }
+                    return null;
+                }, $child_services));
+
+                if (!empty($valid_children)) {
+                    $schema['hasOfferCatalog'] = [
+                        '@type' => 'OfferCatalog',
+                        'name' => $entity_post->post_title,
+                        'itemListElement' => array_values($valid_children)
+                    ];
+                }
             }
         }
 
