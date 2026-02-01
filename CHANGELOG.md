@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.3.2] - 2026-02-01
+
+### Fixed
+- **WebPage about property:** Validates entity_id before including, prevents incomplete `@id` references
+- **WebSite publisher:** Uses actual organization entity instead of hardcoded `org-nustart`
+- **Person isPartOf:** Removed invalid `isPartOf` property from Person entities (use `worksFor` instead)
+- **Entity relationships:** All `isPartOf`, `worksFor`, and `hasOfferCatalog` now validate entity_id before creating references
+- **sameAs validation:** Filters out non-URL values (like post IDs) from sameAs property
+- All fixes resolve schema.org validation errors for incomplete or invalid entity references
+
 ## [2.3.1] - 2026-02-01
 
 ### Fixed
