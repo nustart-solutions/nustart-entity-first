@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.3.7] - 2026-02-01
+
+### Fixed
+- **Schema generation:** Fixed array handling for ACF Relationship fields (specifically `parent_entity`) to ensure parent entities are correctly added to the schema graph even when ACF returns them as an array of objects/IDs.
+
 ## [2.3.6] - 2026-02-01
 
 ### Fixed

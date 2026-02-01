@@ -32,8 +32,11 @@ class NS_Schema_Generator_ACF
         $graph = [];
         $added_entities = []; // Track which entities we've already added
 
-        // Helper to get ID from mixed return (Object or ID)
-        $get_id = function ($mixed) {
+        // Helper to get ID from mixed return (Object, Array, or ID)
+        $get_id = function ($mixed) use (&$get_id) {
+            if (is_array($mixed)) {
+                return !empty($mixed) ? $get_id(reset($mixed)) : null;
+            }
             if (is_object($mixed) && isset($mixed->ID)) {
                 return $mixed->ID;
             }
@@ -60,9 +63,10 @@ class NS_Schema_Generator_ACF
             // Build about references for WebPage
             $webpage_about = [];
             foreach ($about_entity_ids as $entity_post_id) {
-                $entity_id_slug = get_field('entity_id', $entity_post_id);
-                if ($entity_id_slug) {
-                    $webpage_about[] = ['@id' => home_url() . '/#' . $entity_id_slug];
+                // Normalized check using new loop variable
+                $entity_id_raw = get_field('entity_id', $entity_post_id);
+                if ($entity_id_raw) {
+                    $webpage_about[] = ['@id' => home_url() . '/#' . $entity_id_raw];
                 }
             }
 
@@ -89,9 +93,9 @@ class NS_Schema_Generator_ACF
             // Build about references for BlogPosting
             $article_about = [];
             foreach ($about_entity_ids as $entity_post_id) {
-                $entity_id_slug = get_field('entity_id', $entity_post_id);
-                if ($entity_id_slug) {
-                    $article_about[] = ['@id' => home_url() . '/#' . $entity_id_slug];
+                $entity_id_raw = get_field('entity_id', $entity_post_id);
+                if ($entity_id_raw) {
+                    $article_about[] = ['@id' => home_url() . '/#' . $entity_id_raw];
                 }
             }
 
@@ -165,7 +169,7 @@ class NS_Schema_Generator_ACF
             ));
 
             foreach ($entities_to_check as $entity_id) {
-                // Determine existing parent logic: get field, check if object/ID
+                // Determine existing parent logic: get field, handle Array/Object/ID
                 $parent_raw = get_field('parent_entity', $entity_id);
                 $parent_entity_id = $get_id($parent_raw);
 
@@ -207,7 +211,7 @@ class NS_Schema_Generator_ACF
             $graph[] = $website_schema;
         }
 
-        // Add WebPage entity (skip for blog posts)
+        // Add WebPage entity (skip for blog posts - handled above)
         if (!$is_blog_post) {
             $seo_overrides = get_field('seo_overrides', $post_id);
 
