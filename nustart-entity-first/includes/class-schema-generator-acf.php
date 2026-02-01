@@ -143,13 +143,21 @@ class NS_Schema_Generator_ACF
 
         // Add parent entities for any entities that have isPartOf relationships
         // This ensures referenced parent entities are included in the graph
-        if (!$is_blog_post && $primary_entity_id) {
-            $parent_entity_id = get_field('parent_entity', $primary_entity_id);
-            if ($parent_entity_id && !in_array($parent_entity_id, $added_entities)) {
-                $parent_schema = $this->entity_to_schema($parent_entity_id);
-                if ($parent_schema) {
-                    $graph[] = $parent_schema;
-                    $added_entities[] = $parent_entity_id;
+        if (!$is_blog_post) {
+            $entities_to_check = array_unique(array_merge(
+                $primary_entity_id ? [$primary_entity_id] : [],
+                $about_entity_ids,
+                $mentions_entity_ids
+            ));
+
+            foreach ($entities_to_check as $entity_id) {
+                $parent_entity_id = get_field('parent_entity', $entity_id);
+                if ($parent_entity_id && !in_array($parent_entity_id, $added_entities)) {
+                    $parent_schema = $this->entity_to_schema($parent_entity_id);
+                    if ($parent_schema) {
+                        $graph[] = $parent_schema;
+                        $added_entities[] = $parent_entity_id;
+                    }
                 }
             }
         }

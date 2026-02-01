@@ -25,7 +25,7 @@ def deploy_plugin():
     sftp_user = os.getenv('SFTP_USER')
     sftp_password = os.getenv('SFTP_PASSWORD')
     wp_path = os.getenv('SFTP_WP_PATH', '/srv/htdocs/')
-    remote_path = wp_path.rstrip('/') + '/wp-content/plugins/nustart-entity-seo'
+    remote_path = wp_path.rstrip('/') + '/wp-content/plugins/nustart-entity-first'
     
     if not all([sftp_host, sftp_user, sftp_password]):
         print("[ERROR] Missing SFTP credentials in .env file")

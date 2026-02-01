@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.3.4] - 2026-02-01
+
+### Fixed
+- **Parent entity detection:** Improved logic to check all entities (primary, about, mentions) for parent relationships, not just primary entity
+
 ## [2.3.3] - 2026-02-01
 
 ### Fixed
