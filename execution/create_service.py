@@ -27,12 +27,12 @@ def create_service_entity(args):
     """Create or update a service entity with hierarchical relationships"""
     
     # Get WordPress credentials
-    wp_url = os.getenv('WP_URL', 'https://nustart.solutions')
-    wp_user = os.getenv('WP_USER')
-    wp_app_password = os.getenv('WP_APP_PASSWORD')
+    wp_url = os.getenv('WP_SITE_URL', 'https://nustart.solutions').rstrip('/')
+    wp_user = os.getenv('WP_API_USER')
+    wp_app_password = os.getenv('WP_API_PASSWORD')
     
     if not all([wp_user, wp_app_password]):
-        print("[ERROR] Missing WP_USER or WP_APP_PASSWORD in .env")
+        print("[ERROR] Missing WP_API_USER or WP_API_PASSWORD in .env")
         return False
     
     # Build schema JSON
