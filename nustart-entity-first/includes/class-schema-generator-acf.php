@@ -243,18 +243,16 @@ class NS_Schema_Generator_ACF
             }
         }
 
-        // Merge all other properties from schema_json
+        // Merge all other properties from schema_json (exclude @context and core properties)
         foreach ($schema_data as $key => $value) {
-            if (!in_array($key, ['@type', '@id', 'name', 'url'])) {
+            if (!in_array($key, ['@context', '@type', '@id', 'name', 'url'])) {
                 $schema[$key] = $value;
             }
         }
 
         // Handle provider relationship (for Services)
-        if (($schema['@type'] ?? '') === 'Service' && !isset($schema['provider'])) {
-            // Default to org-nustart
-            $schema['provider'] = ['@id' => home_url() . '/#org-nustart'];
-        }
+        // Only add if not already set in schema_json
+        // Provider should be explicitly set or inherited from parent
 
         // Handle worksFor relationship (for Persons)
         if (($schema['@type'] ?? '') === 'Person' && $parent_entity_id && !isset($schema['worksFor'])) {
