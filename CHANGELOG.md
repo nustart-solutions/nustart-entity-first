@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.2.1] - 2026-02-01
+
+### Fixed
+- **Vendor directory included:** Fixed activation error by including `vendor/` directory in repository
+- Plugin Update Checker library is now properly distributed with the plugin
+
 ## [2.2.0] - 2026-02-01
 
 ### 🎉 Removed Legacy Infrastructure & ACF Free Compatible
