@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.3.5] - 2026-02-01
+
+### Fixed
+- **Plugin activation error:** Added error handling for plugin update checker to prevent fatal errors during activation
+- **PHP syntax error:** Moved use statement outside try-catch block
+
 ## [2.3.4] - 2026-02-01
 
 ### Fixed
