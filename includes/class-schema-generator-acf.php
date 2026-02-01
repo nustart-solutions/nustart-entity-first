@@ -220,10 +220,12 @@ class NS_Schema_Generator_ACF
             'url' => $canonical_url
         ];
 
-        // Add sameAs
+        // Add sameAs (parse from textarea - one URL per line)
         if (!empty($same_as)) {
-            $same_as_urls = array_column($same_as, 'url');
-            $schema['sameAs'] = array_filter($same_as_urls);
+            $same_as_urls = array_filter(array_map('trim', explode("\n", $same_as)));
+            if (!empty($same_as_urls)) {
+                $schema['sameAs'] = $same_as_urls;
+            }
         }
 
         // Add parent relationship (isPartOf)
