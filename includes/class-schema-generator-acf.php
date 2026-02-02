@@ -8,7 +8,7 @@ class NS_Schema_Generator_ACF
     /**
      * Generate complete schema graph for current URL
      */
-    public function generate_for_current_url()
+    public function generate_for_current_url(&$debug = [])
     {
         global $post;
 
@@ -16,13 +16,13 @@ class NS_Schema_Generator_ACF
             return null;
         }
 
-        return $this->generate_for_post($post->ID);
+        return $this->generate_for_post($post->ID, $debug);
     }
 
     /**
      * Generate complete schema graph for a post
      */
-    public function generate_for_post($post_id)
+    public function generate_for_post($post_id, &$debug = [])
     {
         $post = get_post($post_id);
         if (!$post) {
@@ -168,16 +168,28 @@ class NS_Schema_Generator_ACF
                 $mentions_entity_ids
             ));
 
+            $debug[] = "Entities to check for parents: " . implode(', ', $entities_to_check);
+
             foreach ($entities_to_check as $entity_id) {
                 // Determine existing parent logic: get field, handle Array/Object/ID
                 $parent_raw = get_field('parent_entity', $entity_id);
                 $parent_entity_id = $get_id($parent_raw);
 
-                if ($parent_entity_id && !in_array($parent_entity_id, $added_entities)) {
-                    $parent_schema = $this->entity_to_schema($parent_entity_id);
-                    if ($parent_schema) {
-                        $graph[] = $parent_schema;
-                        $added_entities[] = $parent_entity_id;
+                $type_raw = gettype($parent_raw);
+                $debug[] = "Checking Entity ID: $entity_id - Parent Raw Type: $type_raw - ID: " . ($parent_entity_id ?: 'null');
+
+                if ($parent_entity_id) {
+                    if (!in_array($parent_entity_id, $added_entities)) {
+                        $parent_schema = $this->entity_to_schema($parent_entity_id);
+                        if ($parent_schema) {
+                            $debug[] = "Adding Parent Entity: $parent_entity_id";
+                            $graph[] = $parent_schema;
+                            $added_entities[] = $parent_entity_id;
+                        } else {
+                            $debug[] = "Failed to generate schema for Parent: $parent_entity_id";
+                        }
+                    } else {
+                        $debug[] = "Parent $parent_entity_id already in graph";
                     }
                 }
             }
@@ -434,10 +446,19 @@ class NS_Schema_Generator_ACF
      */
     public function output_schema()
     {
-        $schema = $this->generate_for_current_url();
+        // Capture debug info
+        $debug = [];
+        $schema = $this->generate_for_current_url($debug);
 
         if ($schema) {
-            echo "\n" . '<!-- NuStart Entity-First SEO Schema (ACF) -->' . "\n";
+            echo "\n" . '<!-- NuStart Entity-First SEO Schema (ACF) v2.3.8 -->' . "\n";
+            if (!empty($debug)) {
+                echo '<!-- Debug Log:' . "\n";
+                foreach ($debug as $line) {
+                    echo " - " . esc_html($line) . "\n";
+                }
+                echo '-->' . "\n";
+            }
             echo '<script type="application/ld+json">' . "\n";
             echo wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
             echo "\n" . '</script>' . "\n";

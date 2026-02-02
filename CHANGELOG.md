@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.3.8] - 2026-02-01
+
+### Added
+- **Debug output:** Added detailed HTML comments to schema output to trace parent entity logic and diagnose "Unspecified Type" errors
+
 ## [2.3.7] - 2026-02-01
 
 ### Fixed
