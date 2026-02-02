@@ -267,9 +267,15 @@ class NS_Schema_Generator_ACF
         }
 
         // Wrap in @graph
+        // Ensure array_values resets keys so checking logic works and JSON is an array
+        $final_graph = array_values(array_filter($graph));
+
+        $debug[] = "Final Graph Count: " . count($final_graph);
+        $debug[] = "Final Graph Keys: " . implode(', ', array_keys($final_graph));
+
         return [
             '@context' => 'https://schema.org',
-            '@graph' => array_filter($graph) // Remove nulls
+            '@graph' => $final_graph
         ];
     }
 

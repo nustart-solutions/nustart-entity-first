@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.3.10] - 2026-02-01
+
+### Fixed
+- **Schema output:** Fixed JSON array generation by resetting array keys with `array_values()` after filtering. This resolves an issue where the parent entity node was generated but dropped from the final output due to non-sequential array keys.
+
 ## [2.3.9] - 2026-02-01
 
 ### Added
