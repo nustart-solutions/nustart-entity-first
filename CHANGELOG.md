@@ -1,5 +1,23 @@
 # Changelog
 
+## [2.3.14] - 2026-02-01
+
+### Fixed
+- **Service Schema Standard:** Switched to `hasOfferCatalog` + `Offer` structure for defining parent-child service relationships, replacing the invalid `isPartOf` usage.
+- **Validation:** Removed parent reference properties from child Service entities to prevent validation errors.
+
+## [2.3.13] - 2026-02-01
+
+### Fixed
+- **Schema Validation:** Replaced `isPartOf` with `isRelatedTo` for Service entities to comply with Schema.org standards (Service is not a CreativeWork).
+- **WebPage Schema:** Added `mainEntity` property to WebPage nodes to explicitly signal the primary entity to search engines.
+
+## [2.3.12] - 2026-02-01
+
+### Fixed
+- **Schema logic:** Added protection against circular references where an entity lists itself as its own parent, ensuring the `isPartOf` property and schema generation loop don't break validation.
+- **Cleanup:** Removed debug logging from production output.
+
 ## [2.3.11] - 2026-02-01
 
 ### Fixed

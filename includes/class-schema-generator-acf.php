@@ -8,7 +8,7 @@ class NS_Schema_Generator_ACF
     /**
      * Generate complete schema graph for current URL
      */
-    public function generate_for_current_url(&$debug = [])
+    public function generate_for_current_url()
     {
         global $post;
 
@@ -16,13 +16,13 @@ class NS_Schema_Generator_ACF
             return null;
         }
 
-        return $this->generate_for_post($post->ID, $debug);
+        return $this->generate_for_post($post->ID);
     }
 
     /**
      * Generate complete schema graph for a post
      */
-    public function generate_for_post($post_id, &$debug = [])
+    public function generate_for_post($post_id)
     {
         $post = get_post($post_id);
         if (!$post) {
@@ -168,31 +168,17 @@ class NS_Schema_Generator_ACF
                 $mentions_entity_ids
             ));
 
-            $debug[] = "Entities to check for parents: " . implode(', ', $entities_to_check);
-
             foreach ($entities_to_check as $entity_id) {
                 // Determine existing parent logic: get field, handle Array/Object/ID
                 $parent_raw = get_field('parent_entity', $entity_id);
                 $parent_entity_id = $get_id($parent_raw);
 
-                $type_raw = gettype($parent_raw);
-                $debug[] = "Checking Entity ID: $entity_id - Parent Raw Type: $type_raw - ID: " . ($parent_entity_id ?: 'null');
-
-                if ($parent_entity_id) {
-                    if (!in_array($parent_entity_id, $added_entities)) {
-                        $parent_schema = $this->entity_to_schema($parent_entity_id);
-                        if ($parent_schema) {
-                            $debug[] = "Adding Parent Entity: $parent_entity_id";
-                            $debug[] = "Parent Schema Keys: " . implode(', ', array_keys($parent_schema));
-                            $debug[] = "Parent Schema Type: " . ($parent_schema['@type'] ?? 'MISSING');
-                            $debug[] = "Parent Schema ID: " . ($parent_schema['@id'] ?? 'MISSING');
-                            $graph[] = $parent_schema;
-                            $added_entities[] = $parent_entity_id;
-                        } else {
-                            $debug[] = "Failed to generate schema for Parent: $parent_entity_id";
-                        }
-                    } else {
-                        $debug[] = "Parent $parent_entity_id already in graph";
+                // Prevent self-referencing parents logic loop (though in_array helps, catching early is safer)
+                if ($parent_entity_id && $parent_entity_id != $entity_id && !in_array($parent_entity_id, $added_entities)) {
+                    $parent_schema = $this->entity_to_schema($parent_entity_id);
+                    if ($parent_schema) {
+                        $graph[] = $parent_schema;
+                        $added_entities[] = $parent_entity_id;
                     }
                 }
             }
@@ -250,9 +236,10 @@ class NS_Schema_Generator_ACF
                 'isPartOf' => ['@id' => home_url() . '#website']
             ];
 
-            // Only add about if we have a valid reference
+            // Only add about/mainEntity if we have a valid reference
             if ($about_ref) {
                 $webpage_schema['about'] = $about_ref;
+                $webpage_schema['mainEntity'] = $about_ref;
             }
 
             $graph[] = $webpage_schema;
@@ -269,9 +256,6 @@ class NS_Schema_Generator_ACF
         // Wrap in @graph
         // Ensure array_values resets keys so checking logic works and JSON is an array
         $final_graph = array_values(array_filter($graph));
-
-        $debug[] = "Final Graph Count: " . count($final_graph);
-        $debug[] = "Final Graph Keys: " . implode(', ', array_keys($final_graph));
 
         return [
             '@context' => 'https://schema.org',
@@ -339,24 +323,15 @@ class NS_Schema_Generator_ACF
         }
 
         // Add parent relationship (isPartOf) - only for Service entities
-        // Person entities use worksFor instead
-        if ($parent_entity_id && ($schema['@type'] ?? '') === 'Service') {
-            $parent_canonical = get_field('canonical_url', $parent_entity_id);
-            $parent_entity_slug = get_field('entity_id', $parent_entity_id);
+        // REMOVED: isPartOf is invalid for Service. isRelatedTo is vague.
+        // Using hasOfferCatalog on parent instead (see below).
 
-            // Only add if parent has valid entity_id
-            if (!empty($parent_entity_slug)) {
-                $schema['isPartOf'] = [
-                    '@id' => ($parent_canonical ?: home_url()) . '#' . $parent_entity_slug
-                ];
-            }
-
-            // Add category from parent name
-            $parent_post = get_post($parent_entity_id);
-            if ($parent_post) {
-                $schema['category'] = $parent_post->post_title;
-            }
+        /* 
+        // Logic removed v2.3.14 to fix validator errors
+        if ($parent_entity_id && $parent_entity_id != $entity_post_id && ($schema['@type'] ?? '') === 'Service') {
+           ...
         }
+        */
 
         // Merge all other properties from schema_json (exclude @context and core properties)
         foreach ($schema_data as $key => $value) {
@@ -386,22 +361,48 @@ class NS_Schema_Generator_ACF
         if (($schema['@type'] ?? '') === 'Service') {
             $child_services = $this->get_child_services($entity_post_id);
             if (!empty($child_services)) {
-                // Filter out children without valid entity_id
-                $valid_children = array_filter(array_map(function ($child_id) {
+                $catalog_items = [];
+
+                foreach ($child_services as $child_id) {
+                    $child_post = get_post($child_id);
+                    if (!$child_post)
+                        continue;
+
+                    // Get Minimal Child Data (avoid full recursion if possible, or strictly controlled)
                     $child_canonical = get_field('canonical_url', $child_id);
-                    $child_entity_slug = get_field('entity_id', $child_id);
+                    $child_entity_id = get_field('entity_id', $child_id);
+                    $child_desc = get_field('seo_overrides', $child_id)['meta_description_override'] ?? '';
 
-                    if (!empty($child_entity_slug)) {
-                        return ['@id' => ($child_canonical ?: home_url()) . '#' . $child_entity_slug];
+                    // We need basic schema data for the child
+                    // Using full entity_to_schema might trigger recursion if checking parents, 
+                    // but we removed parent check for Service. 
+                    // Let's build a clean minimal object for the catalog to be safe and efficient.
+
+                    if ($child_canonical && $child_entity_id) {
+                        $child_schema = [
+                            '@type' => 'Service',
+                            '@id' => $child_canonical . '#' . $child_entity_id,
+                            'name' => $child_post->post_title,
+                            'url' => $child_canonical,
+                            'description' => $child_desc
+                        ];
+
+                        // Add serviceType if available (custom field or taxonomy?) 
+                        // Assuming serviceType might be a field or just generic
+                        $child_schema['serviceType'] = $child_post->post_title; // Fallback
+
+                        $catalog_items[] = [
+                            '@type' => 'Offer',
+                            'itemOffered' => $child_schema
+                        ];
                     }
-                    return null;
-                }, $child_services));
+                }
 
-                if (!empty($valid_children)) {
+                if (!empty($catalog_items)) {
                     $schema['hasOfferCatalog'] = [
                         '@type' => 'OfferCatalog',
                         'name' => $entity_post->post_title,
-                        'itemListElement' => array_values($valid_children)
+                        'itemListElement' => $catalog_items
                     ];
                 }
             }
@@ -455,19 +456,10 @@ class NS_Schema_Generator_ACF
      */
     public function output_schema()
     {
-        // Capture debug info
-        $debug = [];
-        $schema = $this->generate_for_current_url($debug);
+        $schema = $this->generate_for_current_url();
 
         if ($schema) {
-            echo "\n" . '<!-- NuStart Entity-First SEO Schema (ACF) v2.3.11 -->' . "\n";
-            if (!empty($debug)) {
-                echo '<!-- Debug Log:' . "\n";
-                foreach ($debug as $line) {
-                    echo " - " . esc_html($line) . "\n";
-                }
-                echo '-->' . "\n";
-            }
+            echo "\n" . '<!-- NuStart Entity-First SEO Schema (ACF) v2.3.12 -->' . "\n";
             echo '<script type="application/ld+json">' . "\n";
             echo wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
             echo "\n" . '</script>' . "\n";
