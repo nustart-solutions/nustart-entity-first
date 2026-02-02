@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.3.11] - 2026-02-01
+
+### Fixed
+- **Version alignment:** Synced debug output comment version with plugin version to ensure clarity during troubleshooting.
+
 ## [2.3.10] - 2026-02-01
 
 ### Fixed

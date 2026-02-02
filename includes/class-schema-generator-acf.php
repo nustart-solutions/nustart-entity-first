@@ -460,7 +460,7 @@ class NS_Schema_Generator_ACF
         $schema = $this->generate_for_current_url($debug);
 
         if ($schema) {
-            echo "\n" . '<!-- NuStart Entity-First SEO Schema (ACF) v2.3.8 -->' . "\n";
+            echo "\n" . '<!-- NuStart Entity-First SEO Schema (ACF) v2.3.11 -->' . "\n";
             if (!empty($debug)) {
                 echo '<!-- Debug Log:' . "\n";
                 foreach ($debug as $line) {
