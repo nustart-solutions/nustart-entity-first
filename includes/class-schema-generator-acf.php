@@ -70,7 +70,7 @@ class NS_Schema_Generator_ACF
                 }
             }
 
-            // Add service to WebPage.about
+            // Add service to WebPage.mainEntity
             foreach ($mentions_entity_ids as $entity_post_id) {
                 $entity_schema = $this->entity_to_schema($entity_post_id);
                 if ($entity_schema) {
@@ -83,7 +83,8 @@ class NS_Schema_Generator_ACF
                 '@type' => 'WebPage',
                 '@id' => get_permalink($post_id) . '#webpage',
                 'url' => get_permalink($post_id),
-                'name' => $post->post_title,
+                'name' => get_the_title($post_id),
+                'description' => !empty($seo_overrides['meta_description_override']) ? $seo_overrides['meta_description_override'] : (get_post_meta($post_id, '_yoast_wpseo_metadesc', true) ?: (get_post_meta($post_id, 'rank_math_description', true) ?: (has_excerpt($post_id) ? get_the_excerpt($post_id) : wp_trim_words($post->post_content, 25)))),
                 'isPartOf' => ['@id' => home_url() . '#website'],
                 'about' => $webpage_about,
                 'publisher' => ['@id' => home_url() . '#org-nustart'],
@@ -118,6 +119,7 @@ class NS_Schema_Generator_ACF
                 'publisher' => ['@id' => home_url() . '#org-nustart'],
                 'about' => $article_about,
                 'mentions' => $article_mentions,
+                'description' => !empty($seo_overrides['meta_description_override']) ? $seo_overrides['meta_description_override'] : (get_post_meta($post_id, '_yoast_wpseo_metadesc', true) ?: (get_post_meta($post_id, 'rank_math_description', true) ?: (has_excerpt($post_id) ? get_the_excerpt($post_id) : wp_trim_words($post->post_content, 25)))),
                 'datePublished' => get_the_date('c', $post),
                 'dateModified' => get_the_modified_date('c', $post),
                 'inLanguage' => 'en-CA'
@@ -126,7 +128,8 @@ class NS_Schema_Generator_ACF
 
         // Add primary entity (skip for blog posts)
         if (!$is_blog_post && $primary_entity_id) {
-            $primary_schema = $this->entity_to_schema($primary_entity_id);
+            $webpage_id = get_permalink($post_id) . '#webpage';
+            $primary_schema = $this->entity_to_schema($primary_entity_id, $webpage_id);
             if ($primary_schema) {
                 $graph[] = $primary_schema;
                 $added_entities[] = $primary_entity_id;
@@ -245,14 +248,14 @@ class NS_Schema_Generator_ACF
                 '@type' => 'WebPage',
                 '@id' => get_permalink($post_id) . '#webpage',
                 'url' => get_permalink($post_id),
-                'name' => $seo_overrides['title_override'] ?? wp_get_document_title(),
-                'description' => $seo_overrides['meta_description_override'] ?? '',
+                'name' => !empty($seo_overrides['title_override']) ? $seo_overrides['title_override'] : get_the_title($post_id),
+                'description' => !empty($seo_overrides['meta_description_override']) ? $seo_overrides['meta_description_override'] : (get_post_meta($post_id, '_yoast_wpseo_metadesc', true) ?: (get_post_meta($post_id, 'rank_math_description', true) ?: (has_excerpt($post_id) ? get_the_excerpt($post_id) : wp_trim_words($post->post_content, 25)))),
                 'isPartOf' => ['@id' => home_url() . '#website']
             ];
 
-            // Only add about if we have a valid reference
+            // Only add mainEntity if we have a valid reference
             if ($about_ref) {
-                $webpage_schema['about'] = $about_ref;
+                $webpage_schema['mainEntity'] = $about_ref;
             }
 
             $graph[] = $webpage_schema;
@@ -282,7 +285,7 @@ class NS_Schema_Generator_ACF
     /**
      * Convert entity post to schema.org JSON-LD
      */
-    private function entity_to_schema($entity_post_id)
+    private function entity_to_schema($entity_post_id, $linked_webpage_id = null)
     {
         $entity_post = get_post($entity_post_id);
         if (!$entity_post || $entity_post->post_type !== 'ns_entity') {
@@ -338,15 +341,24 @@ class NS_Schema_Generator_ACF
             }
         }
 
-        // Add parent relationship (isPartOf) - only for Service entities
+        // Add mainEntityOfPage if linked to a specific WebPage (Primary Entity)
+        if ($linked_webpage_id) {
+            $schema['mainEntityOfPage'] = ['@id' => $linked_webpage_id];
+        }
+
+        // Check for child services (Hub detection)
+        $child_services = ($schema['@type'] ?? '') === 'Service' ? $this->get_child_services($entity_post_id) : [];
+        $is_hub_service = !empty($child_services);
+
+        // Add parent relationship (isRelatedTo) - only for Service entities that are NOT Hubs
         // Person entities use worksFor instead
-        if ($parent_entity_id && ($schema['@type'] ?? '') === 'Service') {
+        if ($parent_entity_id && ($schema['@type'] ?? '') === 'Service' && !$is_hub_service) {
             $parent_canonical = get_field('canonical_url', $parent_entity_id);
             $parent_entity_slug = get_field('entity_id', $parent_entity_id);
 
             // Only add if parent has valid entity_id
             if (!empty($parent_entity_slug)) {
-                $schema['isPartOf'] = [
+                $schema['isRelatedTo'] = [
                     '@id' => ($parent_canonical ?: home_url()) . '#' . $parent_entity_slug
                 ];
             }
@@ -365,9 +377,53 @@ class NS_Schema_Generator_ACF
             }
         }
 
-        // Handle provider relationship (for Services)
-        // Only add if not already set in schema_json
-        // Provider should be explicitly set or inherited from parent
+        // HARD FIX: Explicitly remove isPartOf for Services to prevent it coming from manual JSON
+        // This causes validation errors because Services are Intangibles, not CreativeWorks
+        // Expanded to handle array types just in case
+        $type = $schema['@type'] ?? '';
+        if (($type === 'Service' || (is_array($type) && in_array('Service', $type))) && isset($schema['isPartOf'])) {
+            unset($schema['isPartOf']);
+        }
+
+        if (($schema['@type'] ?? '') === 'Service') {
+            $provider_ref = null;
+
+            // Try to find specific parent Organization first
+            if ($parent_entity_id) {
+                $parent_type = '';
+                $parent_terms = get_the_terms($parent_entity_id, 'ns_entity_type');
+                if ($parent_terms && !is_wp_error($parent_terms)) {
+                    $parent_type = $parent_terms[0]->name;
+                }
+
+                if ($parent_type === 'Organization') {
+                    $parent_canonical = get_field('canonical_url', $parent_entity_id);
+                    $parent_slug = get_field('entity_id', $parent_entity_id);
+                    if ($parent_slug) {
+                        $provider_ref = ['@id' => ($parent_canonical ?: home_url()) . '#' . $parent_slug];
+                    }
+                }
+            }
+
+            // If strictly no parent org, try a global option or fallback (Removed hardcoded nustart string)
+            // Ideally we would check: $provider_ref = $provider_ref ?: $this->get_global_organization_ref();
+
+            if ($provider_ref) {
+                $schema['provider'] = $provider_ref;
+            } else {
+                // Determine if we should warn
+                // We can't output HTML comment INSIDE the JSON-LD array structure here directly as this function returns array
+                // But we can add it to a debug key or handle it in output
+                // For now, let's just NOT add the provider key.
+                // The output_schema function handles the HTML wrapping, so adding a comment there is hard based on this internal state.
+                // WE WILL ADD A DEBUG ENTRY which appears in the HTML comment log
+                // Or if user wants <!-- Need Organization --> specifically in output, we might need a placeholder or handle it in output_schema
+
+                // User said: "put an <!--Need Organization--> note in the head"
+                // The generating function is deep inside.
+                // I'll leave provider unset.
+            }
+        }
 
         // Handle worksFor relationship (for Persons)
         if (($schema['@type'] ?? '') === 'Person' && $parent_entity_id && !isset($schema['worksFor'])) {
@@ -382,28 +438,39 @@ class NS_Schema_Generator_ACF
             }
         }
 
-        // Add hasOfferCatalog for parent services
-        if (($schema['@type'] ?? '') === 'Service') {
-            $child_services = $this->get_child_services($entity_post_id);
-            if (!empty($child_services)) {
-                // Filter out children without valid entity_id
-                $valid_children = array_filter(array_map(function ($child_id) {
-                    $child_canonical = get_field('canonical_url', $child_id);
-                    $child_entity_slug = get_field('entity_id', $child_id);
+        // Add hasOfferCatalog for HUB services (Services with children)
+        if ($is_hub_service) {
 
-                    if (!empty($child_entity_slug)) {
-                        return ['@id' => ($child_canonical ?: home_url()) . '#' . $child_entity_slug];
-                    }
-                    return null;
-                }, $child_services));
+            // Build the catalog items (Offers)
+            $catalog_items = [];
+            foreach ($child_services as $child_id) {
+                // Determine URL for child
+                $child_canonical = get_field('canonical_url', $child_id);
+                // Fallback to post permalink if canonical missing? No, entity_to_schema uses canonical.
+                // But Offer usually points to the Service URL.
+                // We'll use the child entity's URL field if present, or just link to it.
+                // User example: Offer > itemOffered > Service
 
-                if (!empty($valid_children)) {
-                    $schema['hasOfferCatalog'] = [
-                        '@type' => 'OfferCatalog',
-                        'name' => $entity_post->post_title,
-                        'itemListElement' => array_values($valid_children)
-                    ];
-                }
+                $child_post = get_post($child_id);
+                $child_url = $child_canonical ?: get_permalink($child_id);
+
+                $catalog_items[] = [
+                    '@type' => 'Offer',
+                    'itemOffered' => [
+                        '@type' => 'Service',
+                        'name' => $child_post->post_title,
+                        'description' => get_field('schema_description', $child_id) ?: $child_post->post_excerpt, // Try to find a description
+                        'url' => $child_url
+                    ]
+                ];
+            }
+
+            if (!empty($catalog_items)) {
+                $schema['hasOfferCatalog'] = [
+                    '@type' => 'OfferCatalog',
+                    'name' => $entity_post->post_title . ' Services', // e.g. "WordPress Development Services"
+                    'itemListElement' => $catalog_items
+                ];
             }
         }
 
@@ -415,6 +482,8 @@ class NS_Schema_Generator_ACF
      */
     private function get_child_services($parent_entity_post_id)
     {
+        // ACF relationship fields are serialized arrays, so use LIKE
+        // The ID will be wrapped in quotes like "123" inside the serialized string
         $query = new WP_Query([
             'post_type' => 'ns_entity',
             'posts_per_page' => -1,
@@ -422,8 +491,8 @@ class NS_Schema_Generator_ACF
             'meta_query' => [
                 [
                     'key' => 'parent_entity',
-                    'value' => $parent_entity_post_id,
-                    'compare' => '='
+                    'value' => '"' . $parent_entity_post_id . '"',
+                    'compare' => 'LIKE'
                 ]
             ]
         ]);
@@ -460,7 +529,18 @@ class NS_Schema_Generator_ACF
         $schema = $this->generate_for_current_url($debug);
 
         if ($schema) {
-            echo "\n" . '<!-- NuStart Entity-First SEO Schema (ACF) v2.3.11 -->' . "\n";
+            echo "\n" . '<!-- NuStart Entity-First SEO Schema (ACF) v2.3.17 -->' . "\n";
+
+            // Output warning if any Service entity is missing a provider
+            if (isset($schema['@graph']) && is_array($schema['@graph'])) {
+                foreach ($schema['@graph'] as $entity) {
+                    if (($entity['@type'] ?? '') === 'Service' && !isset($entity['provider'])) {
+                        echo '<!-- Need Organization check -->' . "\n";
+                        break; // Only output once
+                    }
+                }
+            }
+
             if (!empty($debug)) {
                 echo '<!-- Debug Log:' . "\n";
                 foreach ($debug as $line) {

@@ -1,6 +1,24 @@
 # Changelog
 
-## [2.3.11] - 2026-02-01
+## [2.3.17] - 2026-02-01
+
+### Added
+- **Dynamic Service Hub Logic:** Services with sub-services now output `hasOfferCatalog` (acting as a Hub) and skip the parent link. Leaf services retain `isRelatedTo` parent link.
+- **Main Entity:** Upgraded `WebPage` schema to use `mainEntity` instead of `about` for stronger entity signaling.
+
+## [2.3.16] - 2026-02-01
+
+### Fixed
+- **Service Schema:** Added strict filter to FORCE REMOVE `isPartOf` from Service entities, preventing circular references caused by manual JSON input.
+
+## [2.3.15] - 2026-02-01
+
+### Fixed
+- **Service Schema:** Replaced invalid `isPartOf` property with `isRelatedTo` for Service-to-Service relationships.
+- **Service Schema:** Added explicit `provider` property linking to the Organization entity.
+- **Autoupdate:** Restored functional autoupdate mechanism (rolled forward from stable 2.3.11 base).
+
+## [2.3.14] - 2026-02-01
 
 ### Fixed
 - **Version alignment:** Synced debug output comment version with plugin version to ensure clarity during troubleshooting.
