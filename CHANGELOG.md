@@ -1,5 +1,10 @@
 # Changelog
 
+## [2.3.9] - 2026-02-01
+
+### Added
+- **Deep debugging:** Added inspection of generated parent schema properties and JSON encoding validation
+
 ## [2.3.8] - 2026-02-01
 
 ### Added

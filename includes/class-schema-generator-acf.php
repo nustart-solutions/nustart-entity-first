@@ -183,6 +183,9 @@ class NS_Schema_Generator_ACF
                         $parent_schema = $this->entity_to_schema($parent_entity_id);
                         if ($parent_schema) {
                             $debug[] = "Adding Parent Entity: $parent_entity_id";
+                            $debug[] = "Parent Schema Keys: " . implode(', ', array_keys($parent_schema));
+                            $debug[] = "Parent Schema Type: " . ($parent_schema['@type'] ?? 'MISSING');
+                            $debug[] = "Parent Schema ID: " . ($parent_schema['@id'] ?? 'MISSING');
                             $graph[] = $parent_schema;
                             $added_entities[] = $parent_entity_id;
                         } else {
