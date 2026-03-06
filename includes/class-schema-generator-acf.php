@@ -250,12 +250,37 @@ class NS_Schema_Generator_ACF
                 'url' => get_permalink($post_id),
                 'name' => !empty($seo_overrides['title_override']) ? $seo_overrides['title_override'] : get_the_title($post_id),
                 'description' => !empty($seo_overrides['meta_description_override']) ? $seo_overrides['meta_description_override'] : (get_post_meta($post_id, '_yoast_wpseo_metadesc', true) ?: (get_post_meta($post_id, 'rank_math_description', true) ?: (has_excerpt($post_id) ? get_the_excerpt($post_id) : wp_trim_words($post->post_content, 25)))),
-                'isPartOf' => ['@id' => home_url() . '#website']
+                'isPartOf' => ['@id' => home_url() . '#website'],
+                'publisher' => ['@id' => home_url() . '#org-nustart']
             ];
 
             // Only add mainEntity if we have a valid reference
             if ($about_ref) {
                 $webpage_schema['mainEntity'] = $about_ref;
+            }
+
+            // Map about entities
+            $page_about = [];
+            foreach ($about_entity_ids as $entity_post_id) {
+                $schema_node = $this->entity_to_schema($entity_post_id);
+                if ($schema_node && isset($schema_node['@id'])) {
+                    $page_about[] = ['@id' => $schema_node['@id']];
+                }
+            }
+            if (!empty($page_about)) {
+                $webpage_schema['about'] = $page_about;
+            }
+
+            // Map mentions entities
+            $page_mentions = [];
+            foreach ($mentions_entity_ids as $entity_post_id) {
+                $schema_node = $this->entity_to_schema($entity_post_id);
+                if ($schema_node && isset($schema_node['@id'])) {
+                    $page_mentions[] = ['@id' => $schema_node['@id']];
+                }
+            }
+            if (!empty($page_mentions)) {
+                $webpage_schema['mentions'] = $page_mentions;
             }
 
             $graph[] = $webpage_schema;
