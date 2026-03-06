@@ -138,5 +138,6 @@ if (function_exists('acf_add_local_field_group')) {
         'style' => 'default',
         'label_placement' => 'top',
         'instruction_placement' => 'label',
+        'show_in_rest' => true,
     ]);
 }
