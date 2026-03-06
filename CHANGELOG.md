@@ -1,5 +1,95 @@
 # Changelog
 
+## [2.4.1] - 2026-03-05
+
+### Fixed
+- **Yoast SEO Conflict:** Added a global filter to automatically suppress Yoast SEO JSON-LD schema generation, preventing duplicate and conflicting output.
+- **Organization Entity Slug:** Enforced a strict `Organization` slug for the Organization entity instead of a dynamically generated one (like `org-company-name`). This perfectly aligns with the hardcoded Publisher `@id` reference, resolving the unresolved reference error in the WebPage schema.
+- **Graph Duplication:** Fixed a bug causing the primary entity node to be silently dropped or duplicated in the overall JSON-LD graph by tracking the `$primary_entity_id` in the `$added_entities` array.
+- **Setup Wizard Type errors:** Fixed silent FATAL errors in PHP 8.0+ when the setup wizard or settings page attempted to save empty array properties (like social profiles or addresses).
+
+## [2.3.17] - 2026-02-01
+
+### Added
+- **Dynamic Service Hub Logic:** Services with sub-services now output `hasOfferCatalog` (acting as a Hub) and skip the parent link. Leaf services retain `isRelatedTo` parent link.
+- **Main Entity:** Upgraded `WebPage` schema to use `mainEntity` instead of `about` for stronger entity signaling.
+
+## [2.3.16] - 2026-02-01
+
+### Fixed
+- **Service Schema:** Added strict filter to FORCE REMOVE `isPartOf` from Service entities, preventing circular references caused by manual JSON input.
+
+## [2.3.15] - 2026-02-01
+
+### Fixed
+- **Service Schema:** Replaced invalid `isPartOf` property with `isRelatedTo` for Service-to-Service relationships.
+- **Service Schema:** Added explicit `provider` property linking to the Organization entity.
+- **Autoupdate:** Restored functional autoupdate mechanism (rolled forward from stable 2.3.11 base).
+
+## [2.3.14] - 2026-02-01
+
+### Fixed
+- **Service Schema Standard:** Switched to `hasOfferCatalog` + `Offer` structure for defining parent-child service relationships, replacing the invalid `isPartOf` usage.
+- **Validation:** Removed parent reference properties from child Service entities to prevent validation errors.
+
+## [2.3.13] - 2026-02-01
+
+### Fixed
+- **Schema Validation:** Replaced `isPartOf` with `isRelatedTo` for Service entities to comply with Schema.org standards (Service is not a CreativeWork).
+- **WebPage Schema:** Added `mainEntity` property to WebPage nodes to explicitly signal the primary entity to search engines.
+
+## [2.3.12] - 2026-02-01
+
+### Fixed
+- **Schema logic:** Added protection against circular references where an entity lists itself as its own parent, ensuring the `isPartOf` property and schema generation loop don't break validation.
+- **Cleanup:** Removed debug logging from production output.
+
+## [2.3.11] - 2026-02-01
+
+### Fixed
+- **Version alignment:** Synced debug output comment version with plugin version to ensure clarity during troubleshooting.
+
+## [2.3.10] - 2026-02-01
+
+### Fixed
+- **Schema output:** Fixed JSON array generation by resetting array keys with `array_values()` after filtering. This resolves an issue where the parent entity node was generated but dropped from the final output due to non-sequential array keys.
+
+## [2.3.9] - 2026-02-01
+
+### Added
+- **Deep debugging:** Added inspection of generated parent schema properties and JSON encoding validation
+
+## [2.3.8] - 2026-02-01
+
+### Added
+- **Debug output:** Added detailed HTML comments to schema output to trace parent entity logic and diagnose "Unspecified Type" errors
+
+## [2.3.7] - 2026-02-01
+
+### Fixed
+- **Schema generation:** Fixed array handling for ACF Relationship fields (specifically `parent_entity`) to ensure parent entities are correctly added to the schema graph even when ACF returns them as an array of objects/IDs.
+
+## [2.3.6] - 2026-02-01
+
+### Fixed
+- **Schema generation:** Fixed "Unspecified Type" error by standardizing entity ID handling (resolves issue where ACF returns objects instead of IDs, causing parent entities to be missed)
+
+## [2.3.5] - 2026-02-01
+
+### Fixed
+- **Plugin activation error:** Added error handling for plugin update checker to prevent fatal errors during activation
+- **PHP syntax error:** Moved use statement outside try-catch block
+
+## [2.3.4] - 2026-02-01
+
+### Fixed
+- **Parent entity detection:** Improved logic to check all entities (primary, about, mentions) for parent relationships, not just primary entity
+
+## [2.3.3] - 2026-02-01
+
+### Fixed
+- **Parent entity inclusion:** Child service pages now automatically include parent service entities in the schema graph when referenced via `isPartOf`, resolving "Unspecified Type" validation errors
+
 ## [2.3.2] - 2026-02-01
 
 ### Fixed
