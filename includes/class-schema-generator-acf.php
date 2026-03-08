@@ -375,16 +375,17 @@ class NS_Schema_Generator_ACF
             }
         }
 
-        // Add parent relationship (isPartOf) - only for Service entities
-        // REMOVED: isPartOf is invalid for Service. isRelatedTo is vague.
-        // Using hasOfferCatalog on parent instead (see below).
-
-        /* 
-        // Logic removed v2.3.14 to fix validator errors
+        // Add parent relationship (isPartOf) for child services
         if ($parent_entity_id && $parent_entity_id != $entity_post_id && ($schema['@type'] ?? '') === 'Service') {
-           ...
+            $parent_canonical = get_field('canonical_url', $parent_entity_id);
+            $parent_entity_slug = get_field('entity_id', $parent_entity_id);
+
+            if (!empty($parent_entity_slug)) {
+                $schema['isPartOf'] = [
+                    '@id' => ($parent_canonical ?: trailingslashit(home_url())) . '#' . $parent_entity_slug
+                ];
+            }
         }
-        */
 
         // Merge all other properties from schema_json (exclude @context and core properties)
         if (!isset($schema_data['@graph']) && !isset($schema_data[0])) {
@@ -396,8 +397,22 @@ class NS_Schema_Generator_ACF
         }
 
         // Handle provider relationship (for Services)
-        // Only add if not already set in schema_json
-        // Provider should be explicitly set or inherited from parent
+        // Ensure every service is connected to the primary Organization entity
+        if (($schema['@type'] ?? '') === 'Service' && !isset($schema['provider'])) {
+            $homepage_id = get_option('page_on_front');
+            if ($homepage_id) {
+                $org_entity_id = get_field('primary_entity', $homepage_id);
+                if ($org_entity_id) {
+                    $org_slug = get_field('entity_id', $org_entity_id);
+                    $org_url = get_field('canonical_url', $org_entity_id) ?: home_url();
+                    if ($org_slug) {
+                        $schema['provider'] = [
+                            '@id' => trailingslashit($org_url) . '#' . ltrim($org_slug, '#')
+                        ];
+                    }
+                }
+            }
+        }
 
         // Handle worksFor relationship (for Persons)
         if (($schema['@type'] ?? '') === 'Person' && $parent_entity_id && !isset($schema['worksFor'])) {
