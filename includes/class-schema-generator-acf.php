@@ -98,7 +98,7 @@ class NS_Schema_Generator_ACF
                 '@id' => get_permalink($post_id) . '#webpage',
                 'url' => get_permalink($post_id),
                 'name' => $post->post_title,
-                'isPartOf' => ['@id' => home_url() . '#website'],
+                'isPartOf' => ['@id' => trailingslashit(home_url()) . '#website'],
                 'about' => $webpage_about,
                 'inLanguage' => 'en-CA'
             ];
@@ -252,8 +252,8 @@ class NS_Schema_Generator_ACF
 
             $website_schema = [
                 '@type' => 'WebSite',
-                '@id' => home_url() . '#website',
-                'url' => home_url(),
+                '@id' => trailingslashit(home_url()) . '#website',
+                'url' => trailingslashit(home_url()),
                 'name' => get_bloginfo('name')
             ];
 
@@ -286,7 +286,7 @@ class NS_Schema_Generator_ACF
                 'url' => get_permalink($post_id),
                 'name' => $seo_overrides['title_override'] ?? wp_get_document_title(),
                 'description' => $seo_overrides['meta_description_override'] ?? '',
-                'isPartOf' => ['@id' => home_url() . '#website']
+                'isPartOf' => ['@id' => trailingslashit(home_url()) . '#website']
             ];
 
             // Only add about/mainEntity if we have a valid reference
