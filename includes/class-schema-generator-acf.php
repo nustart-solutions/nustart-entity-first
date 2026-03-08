@@ -154,9 +154,16 @@ class NS_Schema_Generator_ACF
 
         // Add primary entity (skip for blog posts)
         if (!$is_blog_post && $primary_entity_id) {
-            $primary_schema = $this->entity_to_schema($primary_entity_id);
-            if ($primary_schema) {
-                $graph[] = $primary_schema;
+            $primary_schemas = $this->entity_to_schema($primary_entity_id);
+            if ($primary_schemas) {
+                // Handle both single objects and arrays of objects
+                if (isset($primary_schemas['@type'])) {
+                    $graph[] = $primary_schemas;
+                } else {
+                    foreach ($primary_schemas as $s) {
+                        $graph[] = $s;
+                    }
+                }
                 $added_entities[] = $primary_entity_id;
             }
         }
@@ -166,9 +173,15 @@ class NS_Schema_Generator_ACF
             if (in_array($entity_post_id, $added_entities)) {
                 continue;
             }
-            $schema = $this->entity_to_schema($entity_post_id);
-            if ($schema) {
-                $graph[] = $schema;
+            $schemas = $this->entity_to_schema($entity_post_id);
+            if ($schemas) {
+                if (isset($schemas['@type'])) {
+                    $graph[] = $schemas;
+                } else {
+                    foreach ($schemas as $s) {
+                        $graph[] = $s;
+                    }
+                }
                 $added_entities[] = $entity_post_id;
             }
         }
@@ -179,9 +192,15 @@ class NS_Schema_Generator_ACF
                 if (in_array($entity_post_id, $added_entities)) {
                     continue;
                 }
-                $schema = $this->entity_to_schema($entity_post_id);
-                if ($schema) {
-                    $graph[] = $schema;
+                $schemas = $this->entity_to_schema($entity_post_id);
+                if ($schemas) {
+                    if (isset($schemas['@type'])) {
+                        $graph[] = $schemas;
+                    } else {
+                        foreach ($schemas as $s) {
+                            $graph[] = $s;
+                        }
+                    }
                     $added_entities[] = $entity_post_id;
                 }
             }
@@ -203,9 +222,15 @@ class NS_Schema_Generator_ACF
 
                 // Prevent self-referencing parents logic loop (though in_array helps, catching early is safer)
                 if ($parent_entity_id && $parent_entity_id != $entity_id && !in_array($parent_entity_id, $added_entities)) {
-                    $parent_schema = $this->entity_to_schema($parent_entity_id);
-                    if ($parent_schema) {
-                        $graph[] = $parent_schema;
+                    $parent_schemas = $this->entity_to_schema($parent_entity_id);
+                    if ($parent_schemas) {
+                        if (isset($parent_schemas['@type'])) {
+                            $graph[] = $parent_schemas;
+                        } else {
+                            foreach ($parent_schemas as $s) {
+                                $graph[] = $s;
+                            }
+                        }
                         $added_entities[] = $parent_entity_id;
                     }
                 }
@@ -362,9 +387,11 @@ class NS_Schema_Generator_ACF
         */
 
         // Merge all other properties from schema_json (exclude @context and core properties)
-        foreach ($schema_data as $key => $value) {
-            if (!in_array($key, ['@context', '@type', '@id', 'name', 'url'])) {
-                $schema[$key] = $value;
+        if (!isset($schema_data['@graph']) && !isset($schema_data[0])) {
+            foreach ($schema_data as $key => $value) {
+                if (!in_array($key, ['@context', '@type', '@id', 'name', 'url'])) {
+                    $schema[$key] = $value;
+                }
             }
         }
 
@@ -396,15 +423,10 @@ class NS_Schema_Generator_ACF
                     if (!$child_post)
                         continue;
 
-                    // Get Minimal Child Data (avoid full recursion if possible, or strictly controlled)
+                    // Get Minimal Child Data
                     $child_canonical = get_field('canonical_url', $child_id);
                     $child_entity_id = get_field('entity_id', $child_id);
                     $child_desc = get_field('seo_overrides', $child_id)['meta_description_override'] ?? '';
-
-                    // We need basic schema data for the child
-                    // Using full entity_to_schema might trigger recursion if checking parents, 
-                    // but we removed parent check for Service. 
-                    // Let's build a clean minimal object for the catalog to be safe and efficient.
 
                     if ($child_canonical && $child_entity_id) {
                         $child_schema = [
@@ -415,8 +437,6 @@ class NS_Schema_Generator_ACF
                             'description' => $child_desc
                         ];
 
-                        // Add serviceType if available (custom field or taxonomy?) 
-                        // Assuming serviceType might be a field or just generic
                         $child_schema['serviceType'] = $child_post->post_title; // Fallback
 
                         $catalog_items[] = [
@@ -434,6 +454,79 @@ class NS_Schema_Generator_ACF
                     ];
                 }
             }
+        }
+
+        // If the parsed JSON was actually a graph or array of multiple objects,
+        // we should return all of them instead of just the merged one.
+        if (isset($schema_data['@graph']) && is_array($schema_data['@graph'])) {
+            $result_schemas = [];
+            // We need to apply our standard properties (like sameAs) to the primary object within the graph
+            $primary_type = $entity_type;
+            if (isset($schema_data['@type'])) {
+                $primary_type = $schema_data['@type'];
+            }
+
+            // If it's a multi-type array like ["LocalBusiness", "EmploymentAgency"], handle it
+            $is_primary = function ($item_type) use ($primary_type) {
+                if (is_array($item_type)) {
+                    return in_array($primary_type, $item_type);
+                }
+                return $item_type === $primary_type;
+            };
+
+            $merged_primary = false;
+            foreach ($schema_data['@graph'] as $item) {
+                if (!$merged_primary && isset($item['@type']) && $is_primary($item['@type'])) {
+                    // Update the schema we built earlier with this item's props
+                    foreach ($item as $k => $v) {
+                        if (!in_array($k, ['@context', '@type', '@id', 'name', 'url'])) {
+                            $schema[$k] = $v;
+                        }
+                    }
+                    $result_schemas[] = $schema;
+                    $merged_primary = true;
+                } else {
+                    $result_schemas[] = $item;
+                }
+            }
+
+            if (!$merged_primary) {
+                // If we didn't find the primary in the graph to merge with our base schema, just prepend our base schema
+                array_unshift($result_schemas, $schema);
+            }
+            return $result_schemas;
+
+        } elseif (isset($schema_data[0]) && is_array($schema_data[0])) {
+            // It's a direct array of objects [{...}, {...}]
+            $result_schemas = [];
+            $primary_type = $entity_type;
+
+            $is_primary = function ($item_type) use ($primary_type) {
+                if (is_array($item_type)) {
+                    return in_array($primary_type, $item_type);
+                }
+                return $item_type === $primary_type;
+            };
+
+            $merged_primary = false;
+            foreach ($schema_data as $item) {
+                if (!$merged_primary && isset($item['@type']) && $is_primary($item['@type'])) {
+                    foreach ($item as $k => $v) {
+                        if (!in_array($k, ['@context', '@type', '@id', 'name', 'url'])) {
+                            $schema[$k] = $v;
+                        }
+                    }
+                    $result_schemas[] = $schema;
+                    $merged_primary = true;
+                } else {
+                    $result_schemas[] = $item;
+                }
+            }
+
+            if (!$merged_primary) {
+                array_unshift($result_schemas, $schema);
+            }
+            return $result_schemas;
         }
 
         return $schema;
