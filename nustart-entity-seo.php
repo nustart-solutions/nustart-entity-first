@@ -52,8 +52,11 @@ try {
     // Set the branch to check for updates (default: main)
     $nsEntityUpdateChecker->setBranch('main');
 
-    // For private repositories, uncomment and add your GitHub Personal Access Token:
-    // $nsEntityUpdateChecker->setAuthentication('your-github-token-here');
+    // To avoid GitHub API rate limits (60 req/hr) or access private repos, 
+    // define NUSTART_GITHUB_TOKEN in wp-config.php
+    if (defined('NUSTART_GITHUB_TOKEN')) {
+        $nsEntityUpdateChecker->setAuthentication(NUSTART_GITHUB_TOKEN);
+    }
 } catch (Exception $e) {
     // Log error but don't prevent plugin activation
     error_log('NuStart Entity SEO: Plugin Update Checker failed to initialize: ' . $e->getMessage());
