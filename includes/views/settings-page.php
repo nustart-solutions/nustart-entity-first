@@ -60,6 +60,22 @@ if (!defined('ABSPATH')) {
                     </td>
                 </tr>
 
+                <!-- Entity Type -->
+                <tr>
+                    <th scope="row">
+                        <label for="org_type">Schema Type</label>
+                    </th>
+                    <td>
+                        <select name="org_type" id="org_type" class="regular-text">
+                            <option value="Organization" <?php selected($org_type ?? 'Organization', 'Organization'); ?>>Organization</option>
+                            <option value="LocalBusiness" <?php selected($org_type ?? 'Organization', 'LocalBusiness'); ?>>LocalBusiness</option>
+                            <option value="Corporation" <?php selected($org_type ?? 'Organization', 'Corporation'); ?>>
+                                Corporation</option>
+                        </select>
+                        <p class="description">The schema.org entity type (usually LocalBusiness or Organization)</p>
+                    </td>
+                </tr>
+
                 <!-- Description -->
                 <tr>
                     <th scope="row">

@@ -57,6 +57,7 @@ class NS_Entity_Setup_Wizard
 
         // Pre-fill with defaults
         $org_name = get_bloginfo('name');
+        $org_type = 'Organization';
         $org_email = get_option('admin_email');
         $org_phone = '';
         $org_description = get_bloginfo('description');
@@ -91,6 +92,7 @@ class NS_Entity_Setup_Wizard
 
         // Save organization settings
         update_option('ns_entity_org_name', sanitize_text_field($_POST['org_name']));
+        update_option('ns_entity_org_type', sanitize_text_field($_POST['org_type'] ?? 'Organization'));
         update_option('ns_entity_org_email', sanitize_email($_POST['org_email']));
         update_option('ns_entity_org_phone', sanitize_text_field($_POST['org_phone']));
         update_option('ns_entity_org_description', sanitize_textarea_field($_POST['org_description']));
@@ -189,13 +191,14 @@ class NS_Entity_Setup_Wizard
      */
     private function generate_schema_from_settings()
     {
+        $org_type = get_option('ns_entity_org_type', 'Organization');
         $org_email = get_option('ns_entity_org_email');
         $org_phone = get_option('ns_entity_org_phone');
         $org_description = get_option('ns_entity_org_description');
         $org_address = get_option('ns_entity_org_address');
 
         $schema = [
-            '@type' => 'Organization'
+            '@type' => $org_type ?: 'Organization'
         ];
 
         // Add description

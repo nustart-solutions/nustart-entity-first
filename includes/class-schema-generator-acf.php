@@ -58,6 +58,20 @@ class NS_Schema_Generator_ACF
         // Determine if this is a blog post
         $is_blog_post = ($post->post_type === 'post');
 
+        // Get publisher reference from front page's primary entity to use safely
+        $publisher_ref = null;
+        $homepage_id = get_option('page_on_front');
+        if ($homepage_id) {
+            $org_entity_id = get_field('primary_entity', $homepage_id);
+            if ($org_entity_id) {
+                $org_slug = get_field('entity_id', $org_entity_id);
+                $org_url = get_field('canonical_url', $org_entity_id) ?: home_url();
+                if ($org_slug) {
+                    $publisher_ref = ['@id' => rtrim($org_url, '/') . '/#' . ltrim($org_slug, '#')];
+                }
+            }
+        }
+
         // For blog posts, generate WebPage + BlogPosting schema
         if ($is_blog_post) {
             // Build about references for WebPage
@@ -66,7 +80,7 @@ class NS_Schema_Generator_ACF
                 // Normalized check using new loop variable
                 $entity_id_raw = get_field('entity_id', $entity_post_id);
                 if ($entity_id_raw) {
-                    $webpage_about[] = ['@id' => home_url() . '/#' . $entity_id_raw];
+                    $webpage_about[] = ['@id' => home_url() . '/#' . ltrim($entity_id_raw, '#')];
                 }
             }
 
@@ -79,23 +93,26 @@ class NS_Schema_Generator_ACF
             }
 
             // Add WebPage entity
-            $graph[] = [
+            $webpage = [
                 '@type' => 'WebPage',
                 '@id' => get_permalink($post_id) . '#webpage',
                 'url' => get_permalink($post_id),
                 'name' => $post->post_title,
                 'isPartOf' => ['@id' => home_url() . '#website'],
                 'about' => $webpage_about,
-                'publisher' => ['@id' => home_url() . '#org-nustart'],
                 'inLanguage' => 'en-CA'
             ];
+            if ($publisher_ref) {
+                $webpage['publisher'] = $publisher_ref;
+            }
+            $graph[] = $webpage;
 
             // Build about references for BlogPosting
             $article_about = [];
             foreach ($about_entity_ids as $entity_post_id) {
                 $entity_id_raw = get_field('entity_id', $entity_post_id);
                 if ($entity_id_raw) {
-                    $article_about[] = ['@id' => home_url() . '/#' . $entity_id_raw];
+                    $article_about[] = ['@id' => home_url() . '/#' . ltrim($entity_id_raw, '#')];
                 }
             }
 
@@ -109,19 +126,30 @@ class NS_Schema_Generator_ACF
             }
 
             // Add BlogPosting entity
-            $graph[] = [
+            $blog_posting = [
                 '@type' => 'BlogPosting',
                 '@id' => get_permalink($post_id) . '#article',
                 'mainEntityOfPage' => ['@id' => get_permalink($post_id) . '#webpage'],
                 'headline' => $post->post_title,
-                'author' => ['@id' => home_url() . '/about-nustart-web-solutions/#person-anne'],
-                'publisher' => ['@id' => home_url() . '#org-nustart'],
                 'about' => $article_about,
                 'mentions' => $article_mentions,
                 'datePublished' => get_the_date('c', $post),
                 'dateModified' => get_the_modified_date('c', $post),
                 'inLanguage' => 'en-CA'
             ];
+
+            // Post author minimal fallback
+            $author_id = $post->post_author;
+            $author_name = get_the_author_meta('display_name', $author_id);
+            $blog_posting['author'] = [
+                '@type' => 'Person',
+                'name' => $author_name ?: 'Author'
+            ];
+
+            if ($publisher_ref) {
+                $blog_posting['publisher'] = $publisher_ref;
+            }
+            $graph[] = $blog_posting;
         }
 
         // Add primary entity (skip for blog posts)
