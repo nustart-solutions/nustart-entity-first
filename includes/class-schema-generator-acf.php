@@ -335,7 +335,12 @@ class NS_Schema_Generator_ACF
         $canonical_url = get_field('canonical_url', $entity_post_id);
         $same_as = get_field('same_as', $entity_post_id) ?: [];
         $schema_json = get_field('schema_json', $entity_post_id);
-        $parent_entity_id = get_field('parent_entity', $entity_post_id);
+
+        $parent_raw = get_field('parent_entity', $entity_post_id);
+        $parent_entity_id = is_array($parent_raw) ? reset($parent_raw) : $parent_raw;
+        if (is_object($parent_entity_id)) {
+            $parent_entity_id = $parent_entity_id->ID;
+        }
 
         // Parse schema JSON
         $schema_data = [];
@@ -559,8 +564,8 @@ class NS_Schema_Generator_ACF
             'meta_query' => [
                 [
                     'key' => 'parent_entity',
-                    'value' => $parent_entity_post_id,
-                    'compare' => '='
+                    'value' => '"' . $parent_entity_post_id . '"',
+                    'compare' => 'LIKE'
                 ]
             ]
         ]);
