@@ -20,6 +20,20 @@ class NS_Schema_Generator_ACF
     }
 
     /**
+     * Helper to safely extract an ID from ACF relationship fields
+     */
+    private function extract_id($mixed)
+    {
+        if (is_array($mixed)) {
+            return !empty($mixed) ? $this->extract_id(reset($mixed)) : null;
+        }
+        if (is_object($mixed) && isset($mixed->ID)) {
+            return $mixed->ID;
+        }
+        return is_numeric($mixed) ? (int) $mixed : null;
+    }
+
+    /**
      * Generate complete schema graph for a post
      */
     public function generate_for_post($post_id)
@@ -32,26 +46,15 @@ class NS_Schema_Generator_ACF
         $graph = [];
         $added_entities = []; // Track which entities we've already added
 
-        // Helper to get ID from mixed return (Object, Array, or ID)
-        $get_id = function ($mixed) use (&$get_id) {
-            if (is_array($mixed)) {
-                return !empty($mixed) ? $get_id(reset($mixed)) : null;
-            }
-            if (is_object($mixed) && isset($mixed->ID)) {
-                return $mixed->ID;
-            }
-            return is_numeric($mixed) ? (int) $mixed : null;
-        };
-
         // Get page entity mappings from ACF and normalize to IDs
         $primary_raw = get_field('primary_entity', $post_id);
-        $primary_entity_id = $get_id($primary_raw);
+        $primary_entity_id = $this->extract_id($primary_raw);
 
         $about_raw = get_field('about_entities', $post_id) ?: [];
-        $about_entity_ids = array_filter(array_map($get_id, is_array($about_raw) ? $about_raw : []));
+        $about_entity_ids = array_filter(array_map([$this, 'extract_id'], is_array($about_raw) ? $about_raw : []));
 
         $mentions_raw = get_field('mentions_entities', $post_id) ?: [];
-        $mentions_entity_ids = array_filter(array_map($get_id, is_array($mentions_raw) ? $mentions_raw : []));
+        $mentions_entity_ids = array_filter(array_map([$this, 'extract_id'], is_array($mentions_raw) ? $mentions_raw : []));
 
         $faq_data = get_field('faq_data', $post_id) ?: [];
 
@@ -86,7 +89,7 @@ class NS_Schema_Generator_ACF
 
             // Add service to WebPage.about
             foreach ($mentions_entity_ids as $entity_post_id) {
-                $entity_schema = $this->entity_to_schema($entity_post_id);
+                $entity_schema = $this->entity_to_schema($entity_post_id, false);
                 if ($entity_schema) {
                     $webpage_about[] = ['@id' => $entity_schema['@id']];
                 }
@@ -119,7 +122,7 @@ class NS_Schema_Generator_ACF
             // Build mentions
             $article_mentions = [];
             foreach ($mentions_entity_ids as $entity_post_id) {
-                $entity_schema = $this->entity_to_schema($entity_post_id);
+                $entity_schema = $this->entity_to_schema($entity_post_id, false);
                 if ($entity_schema) {
                     $article_mentions[] = ['@id' => $entity_schema['@id']];
                 }
@@ -154,7 +157,7 @@ class NS_Schema_Generator_ACF
 
         // Add primary entity (skip for blog posts)
         if (!$is_blog_post && $primary_entity_id) {
-            $primary_schemas = $this->entity_to_schema($primary_entity_id);
+            $primary_schemas = $this->entity_to_schema($primary_entity_id, true);
             if ($primary_schemas) {
                 // Handle both single objects and arrays of objects
                 if (isset($primary_schemas['@type'])) {
@@ -173,7 +176,7 @@ class NS_Schema_Generator_ACF
             if (in_array($entity_post_id, $added_entities)) {
                 continue;
             }
-            $schemas = $this->entity_to_schema($entity_post_id);
+            $schemas = $this->entity_to_schema($entity_post_id, false);
             if ($schemas) {
                 if (isset($schemas['@type'])) {
                     $graph[] = $schemas;
@@ -192,7 +195,7 @@ class NS_Schema_Generator_ACF
                 if (in_array($entity_post_id, $added_entities)) {
                     continue;
                 }
-                $schemas = $this->entity_to_schema($entity_post_id);
+                $schemas = $this->entity_to_schema($entity_post_id, false);
                 if ($schemas) {
                     if (isset($schemas['@type'])) {
                         $graph[] = $schemas;
@@ -218,11 +221,11 @@ class NS_Schema_Generator_ACF
             foreach ($entities_to_check as $entity_id) {
                 // Determine existing parent logic: get field, handle Array/Object/ID
                 $parent_raw = get_field('parent_entity', $entity_id);
-                $parent_entity_id = $get_id($parent_raw);
+                $parent_entity_id = $this->extract_id($parent_raw);
 
                 // Prevent self-referencing parents logic loop (though in_array helps, catching early is safer)
                 if ($parent_entity_id && $parent_entity_id != $entity_id && !in_array($parent_entity_id, $added_entities)) {
-                    $parent_schemas = $this->entity_to_schema($parent_entity_id);
+                    $parent_schemas = $this->entity_to_schema($parent_entity_id, false);
                     if ($parent_schemas) {
                         if (isset($parent_schemas['@type'])) {
                             $graph[] = $parent_schemas;
@@ -319,7 +322,7 @@ class NS_Schema_Generator_ACF
     /**
      * Convert entity post to schema.org JSON-LD
      */
-    private function entity_to_schema($entity_post_id)
+    private function entity_to_schema($entity_post_id, $is_primary = true)
     {
         $entity_post = get_post($entity_post_id);
         if (!$entity_post || $entity_post->post_type !== 'ns_entity') {
@@ -337,10 +340,7 @@ class NS_Schema_Generator_ACF
         $schema_json = get_field('schema_json', $entity_post_id);
 
         $parent_raw = get_field('parent_entity', $entity_post_id);
-        $parent_entity_id = is_array($parent_raw) ? reset($parent_raw) : $parent_raw;
-        if (is_object($parent_entity_id)) {
-            $parent_entity_id = $parent_entity_id->ID;
-        }
+        $parent_entity_id = $this->extract_id($parent_raw);
 
         // Parse schema JSON
         $schema_data = [];
@@ -358,6 +358,16 @@ class NS_Schema_Generator_ACF
             'name' => $schema_data['name'] ?? $entity_post->post_title,
             'url' => $canonical_url
         ];
+
+        // Clean up empty URL for stubs
+        if (empty($schema['url'])) {
+            unset($schema['url']);
+        }
+
+        // Output minimal stub for non-primary entities
+        if (!$is_primary) {
+            return $schema;
+        }
 
         // Add sameAs (parse from textarea - one URL per line)
         if (!empty($same_as)) {
@@ -406,7 +416,8 @@ class NS_Schema_Generator_ACF
         if (($schema['@type'] ?? '') === 'Service' && !isset($schema['provider'])) {
             $homepage_id = get_option('page_on_front');
             if ($homepage_id) {
-                $org_entity_id = get_field('primary_entity', $homepage_id);
+                $org_raw = get_field('primary_entity', $homepage_id);
+                $org_entity_id = $this->extract_id($org_raw);
                 if ($org_entity_id) {
                     $org_slug = get_field('entity_id', $org_entity_id);
                     $org_url = get_field('canonical_url', $org_entity_id) ?: home_url();
