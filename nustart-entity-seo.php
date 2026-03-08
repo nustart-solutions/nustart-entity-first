@@ -3,7 +3,7 @@
  * Plugin Name: NuStart Entity-First SEO
  * Plugin URI: https://nustart.solutions
  * Description: Entity-first SEO system with schema.org markup generation (ACF + Custom Post Types)
- * Version:           2.4.1
+ * Version:           2.5.0
  * Author:            NuStart Solutions
  * Author URI:        https://nustart.solutions
  * License:           GPL-2.0+
@@ -18,7 +18,7 @@ if (!defined('WPINC')) {
 
 // Define plugin constants
 if (!defined('NS_ENTITY_VERSION')) {
-    define('NS_ENTITY_VERSION', '2.4.1');
+    define('NS_ENTITY_VERSION', '2.5.0');
 }
 if (!defined('NS_ENTITY_PATH')) {
     define('NS_ENTITY_PATH', plugin_dir_path(__FILE__));
@@ -33,6 +33,7 @@ require_once NS_ENTITY_PATH . 'includes/acf-fields/entity-core-fields.php';
 require_once NS_ENTITY_PATH . 'includes/acf-fields/entity-schema-properties.php';
 require_once NS_ENTITY_PATH . 'includes/acf-fields/page-entity-fields.php';
 require_once NS_ENTITY_PATH . 'includes/class-schema-generator-acf.php';
+require_once NS_ENTITY_PATH . 'includes/class-rest-api.php';
 require_once NS_ENTITY_PATH . 'includes/class-settings-page.php';
 require_once NS_ENTITY_PATH . 'includes/class-setup-wizard.php';
 
@@ -124,6 +125,9 @@ function ns_entity_init_admin()
         new NS_Entity_Settings_Page();
         new NS_Entity_Setup_Wizard();
     }
+
+    // Initialize REST API endpoints
+    new NS_Entity_REST_API();
 }
 add_action('plugins_loaded', 'ns_entity_init_admin');
 
