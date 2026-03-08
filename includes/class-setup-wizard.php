@@ -176,8 +176,8 @@ class NS_Entity_Setup_Wizard
         $same_as_urls = array_filter(array_values($org_social));
         update_field('same_as', implode("\n", $same_as_urls), $post_id);
 
-        // Generate schema JSON from settings
-        $schema_json = $this->generate_schema_from_settings();
+        // Generate schema JSON from settings, merging with anything existing
+        $schema_json = $this->generate_schema_from_settings($post_id);
         update_field('schema_json', $schema_json, $post_id);
 
         // Map homepage to organization
@@ -187,9 +187,9 @@ class NS_Entity_Setup_Wizard
     }
 
     /**
-     * Generate schema.org JSON from settings
+     * Generate schema.org JSON from settings, merging with existing
      */
-    private function generate_schema_from_settings()
+    private function generate_schema_from_settings($entity_id = null)
     {
         $org_type = get_option('ns_entity_org_type', 'Organization');
         $org_email = get_option('ns_entity_org_email');
@@ -197,9 +197,20 @@ class NS_Entity_Setup_Wizard
         $org_description = get_option('ns_entity_org_description');
         $org_address = get_option('ns_entity_org_address');
 
-        $schema = [
-            '@type' => $org_type ?: 'Organization'
-        ];
+        // Get existing schema if available
+        $schema = [];
+        if ($entity_id) {
+            $existing_json = get_field('schema_json', $entity_id);
+            if (!empty($existing_json)) {
+                $decoded = json_decode($existing_json, true);
+                if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                    $schema = $decoded;
+                }
+            }
+        }
+
+        // Always update the type from settings if provided
+        $schema['@type'] = $org_type ?: ($schema['@type'] ?? 'Organization');
 
         // Add description
         if (!empty($org_description)) {
