@@ -77,6 +77,23 @@ class NS_Schema_Generator_ACF
 
         // For blog posts, generate WebPage + BlogPosting schema
         if ($is_blog_post) {
+            // Helper closure to add a schema stub to $graph if it hasn't been added yet
+            $add_stub_to_graph = function ($entity_post_id) use (&$graph, &$added_entities) {
+                if (!in_array($entity_post_id, $added_entities)) {
+                    $entity_schema = $this->entity_to_schema($entity_post_id, false);
+                    if ($entity_schema) {
+                        if (isset($entity_schema['@type'])) {
+                            $graph[] = $entity_schema;
+                        } else {
+                            foreach ($entity_schema as $s) {
+                                $graph[] = $s;
+                            }
+                        }
+                        $added_entities[] = $entity_post_id;
+                    }
+                }
+            };
+
             // Build about references for WebPage
             $webpage_about = [];
             foreach ($about_entity_ids as $entity_post_id) {
@@ -84,6 +101,7 @@ class NS_Schema_Generator_ACF
                 $entity_id_raw = get_field('entity_id', $entity_post_id);
                 if ($entity_id_raw) {
                     $webpage_about[] = ['@id' => home_url() . '/#' . ltrim($entity_id_raw, '#')];
+                    $add_stub_to_graph($entity_post_id);
                 }
             }
 
@@ -92,6 +110,7 @@ class NS_Schema_Generator_ACF
                 $entity_schema = $this->entity_to_schema($entity_post_id, false);
                 if ($entity_schema) {
                     $webpage_about[] = ['@id' => $entity_schema['@id']];
+                    $add_stub_to_graph($entity_post_id);
                 }
             }
 
@@ -113,9 +132,10 @@ class NS_Schema_Generator_ACF
             // Build about references for BlogPosting
             $article_about = [];
             foreach ($about_entity_ids as $entity_post_id) {
-                $entity_id_raw = get_field('entity_id', $entity_post_id);
-                if ($entity_id_raw) {
-                    $article_about[] = ['@id' => home_url() . '/#' . ltrim($entity_id_raw, '#')];
+                $entity_schema = $this->entity_to_schema($entity_post_id, false);
+                if ($entity_schema) {
+                    $article_about[] = ['@id' => $entity_schema['@id']];
+                    $add_stub_to_graph($entity_post_id);
                 }
             }
 
@@ -125,6 +145,7 @@ class NS_Schema_Generator_ACF
                 $entity_schema = $this->entity_to_schema($entity_post_id, false);
                 if ($entity_schema) {
                     $article_mentions[] = ['@id' => $entity_schema['@id']];
+                    $add_stub_to_graph($entity_post_id);
                 }
             }
 
