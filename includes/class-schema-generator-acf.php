@@ -141,12 +141,14 @@ class NS_Schema_Generator_ACF
                 'inLanguage' => 'en-CA'
             ];
 
-            // Post author minimal fallback
+            // Post author fallback - requires a url or image to be fully valid, but name is bare minimum. 
+            // We'll add url.
             $author_id = $post->post_author;
             $author_name = get_the_author_meta('display_name', $author_id);
             $blog_posting['author'] = [
                 '@type' => 'Person',
-                'name' => $author_name ?: 'Author'
+                'name' => $author_name ?: 'Author',
+                'url' => get_author_posts_url($author_id)
             ];
 
             if ($publisher_ref) {
@@ -189,67 +191,88 @@ class NS_Schema_Generator_ACF
             }
         }
 
-        // Add mentioned entities (skip if already added or if blog post)
-        if (!$is_blog_post) {
-            foreach ($mentions_entity_ids as $entity_post_id) {
-                if (in_array($entity_post_id, $added_entities)) {
-                    continue;
-                }
-                $schemas = $this->entity_to_schema($entity_post_id, false);
-                if ($schemas) {
-                    if (isset($schemas['@type'])) {
-                        $graph[] = $schemas;
-                    } else {
-                        foreach ($schemas as $s) {
-                            $graph[] = $s;
-                        }
+        // Add mentioned entities (skip if already added)
+        foreach ($mentions_entity_ids as $entity_post_id) {
+            if (in_array($entity_post_id, $added_entities)) {
+                continue;
+            }
+            $schemas = $this->entity_to_schema($entity_post_id, false);
+            if ($schemas) {
+                if (isset($schemas['@type'])) {
+                    $graph[] = $schemas;
+                } else {
+                    foreach ($schemas as $s) {
+                        $graph[] = $s;
                     }
-                    $added_entities[] = $entity_post_id;
                 }
+                $added_entities[] = $entity_post_id;
             }
         }
 
         // Add parent entities for any entities that have isPartOf relationships
         // This ensures referenced parent entities are included in the graph
-        if (!$is_blog_post) {
-            $entities_to_check = array_unique(array_merge(
-                $primary_entity_id ? [$primary_entity_id] : [],
-                $about_entity_ids,
-                $mentions_entity_ids
-            ));
+        $entities_to_check = array_unique(array_merge(
+            $primary_entity_id ? [$primary_entity_id] : [],
+            $about_entity_ids,
+            $mentions_entity_ids
+        ));
 
-            foreach ($entities_to_check as $entity_id) {
-                // Determine existing parent logic: get field, handle Array/Object/ID
-                $parent_raw = get_field('parent_entity', $entity_id);
-                $parent_entity_id = $this->extract_id($parent_raw);
+        foreach ($entities_to_check as $entity_id) {
+            // Determine existing parent logic: get field, handle Array/Object/ID
+            $parent_raw = get_field('parent_entity', $entity_id);
+            $parent_entity_id = $this->extract_id($parent_raw);
 
-                // Prevent self-referencing parents logic loop (though in_array helps, catching early is safer)
-                if ($parent_entity_id && $parent_entity_id != $entity_id && !in_array($parent_entity_id, $added_entities)) {
-                    $parent_schemas = $this->entity_to_schema($parent_entity_id, false);
-                    if ($parent_schemas) {
-                        if (isset($parent_schemas['@type'])) {
-                            $graph[] = $parent_schemas;
-                        } else {
-                            foreach ($parent_schemas as $s) {
-                                $graph[] = $s;
-                            }
+            // Prevent self-referencing parents logic loop (though in_array helps, catching early is safer)
+            if ($parent_entity_id && $parent_entity_id != $entity_id && !in_array($parent_entity_id, $added_entities)) {
+                $parent_schemas = $this->entity_to_schema($parent_entity_id, false);
+                if ($parent_schemas) {
+                    if (isset($parent_schemas['@type'])) {
+                        $graph[] = $parent_schemas;
+                    } else {
+                        foreach ($parent_schemas as $s) {
+                            $graph[] = $s;
                         }
-                        $added_entities[] = $parent_entity_id;
                     }
+                    $added_entities[] = $parent_entity_id;
                 }
             }
         }
 
-        // Add WebSite entity (if homepage)
-        if (is_front_page()) {
+        // Add WebSite entity (if homepage OR if blog post so WebPage has isPartOf target)
+        if (is_front_page() || $is_blog_post) {
             // Get publisher reference from primary entity
             $publisher_ref = null;
-            if ($primary_entity_id) {
-                $entity_id = get_field('entity_id', $primary_entity_id);
-                $canonical_url = get_field('canonical_url', $primary_entity_id);
+            // On a blog post, primary entity might be blank, so fallback to homepage check
+            $org_check_id = $primary_entity_id;
+            if (!$org_check_id) {
+                $homepage_id = get_option('page_on_front');
+                if ($homepage_id) {
+                    $org_raw = get_field('primary_entity', $homepage_id);
+                    $org_check_id = $this->extract_id($org_raw);
+                }
+            }
+
+            if ($org_check_id) {
+                $entity_id = get_field('entity_id', $org_check_id);
+                $canonical_url = get_field('canonical_url', $org_check_id);
 
                 if (!empty($entity_id)) {
                     $publisher_ref = ['@id' => ($canonical_url ?: home_url()) . '#' . $entity_id];
+                }
+
+                // If it's a blog post, ensure the publisher stub is actually in the graph
+                if ($is_blog_post && !in_array($org_check_id, $added_entities)) {
+                    $org_schema = $this->entity_to_schema($org_check_id, false);
+                    if ($org_schema) {
+                        if (isset($org_schema['@type'])) {
+                            $graph[] = $org_schema;
+                        } else {
+                            foreach ($org_schema as $s) {
+                                $graph[] = $s;
+                            }
+                        }
+                        $added_entities[] = $org_check_id;
+                    }
                 }
             }
 
